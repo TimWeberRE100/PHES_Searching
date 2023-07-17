@@ -5,13 +5,14 @@
 #include "polygons.h"
 #include "reservoir.h"
 #include "mining_pits.h"
+#include "turkey.hpp"
 #include "constructor_helpers.hpp"
 #include "search_config.hpp"
 #include <array>
 #include <gdal/gdal.h>
 #include <climits>
 
-bool debug_output = false;
+bool debug_output = true;
 
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
@@ -784,6 +785,180 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 	return res_count;
 }
 
+int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_depression_mask, Model<short> *DEM){
+	/* 
+	Turkey nests site screening checks for the maximum inscribed circles of flat land
+	AND the minimum enclosing circles of depressions. This maximises water-to-rock ratio.
+
+	Turkey nests on flat land are constrained to a user-defined max_turkey_area since flat
+	regions can be extremely large.
+
+	Turkey nests on flat land are assumed to be circular since ring dams evenly distribute 
+	pressure along the entire dam wall. 
+	*/
+
+	Model<bool> *turkey_mask_debug = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+	turkey_mask_debug->set_geodata(DEM->get_geodata());
+
+	int res_count = 0;
+	int i = 0;
+	Model <bool>* seen_f;
+	Model <bool>* seen_d;
+	FILE *csv_file;
+	FILE *csv_data_file;
+
+	seen_f = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+	seen_f->set_geodata(DEM->get_geodata());
+
+	seen_d = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+	seen_d->set_geodata(DEM->get_geodata());
+
+	// Prepare the reservoir CSV file
+	csv_file =
+			fopen(convert_string(file_storage_location + "output/reservoirs/turkey_" +
+					str(search_config.grid_square) + "_reservoirs.csv"),
+				"w");
+	if (!csv_file) {
+		cout << "Failed to open reservoir CSV file" << endl;
+		exit(1);
+	}
+	write_rough_reservoir_csv_header(csv_file);
+
+	// Prepare the reservoir data CSV file
+	csv_data_file = fopen(
+			convert_string(file_storage_location + "processing_files/reservoirs/turkey_" +
+				str(search_config.grid_square) + "_reservoirs_data.csv"),
+			"w");
+	if (!csv_data_file) {
+		fprintf(stderr, "failed to open reservoir CSV data file\n");
+		exit(1);
+	}
+	write_rough_reservoir_data_header(csv_data_file);
+
+	printf("Success 1\n");
+	for(int row = 0; row<DEM->nrows();row++) {
+		for(int col = 0; col<DEM->ncols();col++) {	
+			if ((!turkey_flat_mask->get(row,col)) && (!turkey_depression_mask->get(row,col))) {
+				continue;
+			}
+
+			if(seen_f->get(row,col) && seen_d->get(row,col)){
+				continue;
+			}
+
+			// Model turkey nests on flat land
+			if ((turkey_flat_mask->get(row,col)) && (!seen_f->get(row,col))) {
+				// Locate flat region based upon interconnected cells on the mask
+				std::vector<ArrayCoordinate> interconnected_flat_points;
+				double interconnected_flat_area = flat_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points);
+				
+				if (interconnected_flat_area < min_watershed_area){
+					printf("Success 2 %.2f %i\n", interconnected_flat_area, (int)interconnected_flat_points.size());
+					continue;
+				}
+
+				int counter = 0; //DEBUG
+				while(!interconnected_flat_points.empty()) {
+					counter++; //DEBUG
+					printf("Success 3 %i %i %i %i %i %i\n", row, col, interconnected_flat_points[0].row, interconnected_flat_points[0].col, int(interconnected_flat_points.size()), counter);
+
+					std::vector<ArrayCoordinate> individual_turkey_region;
+
+					// If the interconnected flat area is very large, fishnet into smaller squares
+					printf("Success 4\n");
+					int individual_region_area = 0;
+					if (interconnected_flat_area > max_turkey_area)
+						individual_region_area = find_fishnet_area(interconnected_flat_points, max_turkey_area, individual_turkey_region); 
+					else {
+						individual_turkey_region = interconnected_flat_points;
+						individual_region_area = interconnected_flat_area;
+						interconnected_flat_points.clear();
+					}
+					printf("Success 5\n");
+					// Find the individual turkey nest (largest inscribed circle within the individual turkey region)
+					
+					if (individual_region_area < min_watershed_area){
+						continue;
+					}
+
+					TurkeyCharacteristics turkey(individual_turkey_region[0].row,individual_turkey_region[0].col,DEM->get_origin());
+
+					i++;
+
+					turkey.identifier = str(search_config.grid_square) + "_TURKEY" + str(i);
+					printf("Success 6\n");
+					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
+						
+					if(model_check)
+						res_count++;
+					else{
+						continue;
+					}
+						
+
+					/* if(debug_output){
+						for(int row = 0; row<individual_turkey_mask->nrows();row++) {
+							for(int col = 0; col<individual_turkey_mask->ncols();col++) {
+								if(individual_turkey_mask->get(row,col)){
+									turkey_mask_debug->set(row,col,true);
+								}
+							}
+						}
+					}	 */
+	
+					printf("Success 7\n");	
+				}				
+			}
+
+			// Model turkey nests around natural depressions
+			/* if ((turkey_depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
+				printf("Success 8\n");
+				Model<bool> *individual_turkey_mask = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+				individual_turkey_mask->set_geodata(DEM->get_geodata());
+
+				TurkeyCharacteristics turkey(row,col,DEM->get_origin());
+
+				i++;
+
+				bool model_check = model_turkey_nest(csv_file, csv_data_file, turkey_depression_mask, seen_d, individual_turkey_mask, DEM, turkey, false);
+				printf("Success 9\n");
+				if(!model_check)
+					continue;
+				else
+				 	res_count++;
+
+				if(debug_output){
+					for(int row = 0; row<individual_turkey_mask->nrows();row++) {
+						for(int col = 0; col<individual_turkey_mask->ncols();col++) {
+							if(individual_turkey_mask->get(row,col)){
+								turkey_mask_debug->set(row,col,true);
+							}
+						}
+					}
+				}
+
+				delete individual_turkey_mask;
+				printf("Success 10\n");
+			} 	 */		
+		}
+	}	
+	fclose(csv_file);
+    fclose(csv_data_file);
+
+	printf("Success 11\n");
+
+	if(debug_output){
+		mkdir(convert_string(file_storage_location+"debug/turkey_mask_debug"),0777);
+    	turkey_mask_debug->write(file_storage_location+"debug/turkey_mask_debug/"+str(search_config.grid_square)+"_turkey_mask_debug.tif", GDT_Byte);
+	}
+
+	delete seen_f;
+	delete seen_d;
+	delete turkey_mask_debug;
+
+	return res_count;
+}
+
 int main(int nargs, char **argv) {
   search_config = SearchConfig(nargs, argv);
   cout << "Screening started for " << search_config.filename() << endl;
@@ -801,7 +976,7 @@ int main(int nargs, char **argv) {
   mkdir(convert_string(file_storage_location + "processing_files"), 0777);
   mkdir(convert_string(file_storage_location + "processing_files/reservoirs"), 0777);
 
-  if (search_config.search_type.not_existing()) {
+  if (search_config.search_type.not_existing() && search_config.search_type != SearchType::TURKEY) {
 	// Create the DEM and filter model
 	Model<bool> *filter;
 	Model<short> *DEM = read_DEM_with_borders(search_config.grid_square, border);
@@ -924,6 +1099,109 @@ int main(int nargs, char **argv) {
 		search_config.logger.debug("Found " + to_string(count) + " reservoirs. Runtime: " + to_string(1.0e-6*(walltime_usec() - t_usec)) + " sec");
 		printf(convert_string("Screening finished for "+search_config.search_type.prefix()+str(search_config.grid_square)+". Runtime: %.2f sec\n"), 1.0e-6*(walltime_usec() - start_usec) );
    
+   // Turkey nest screening
+   } else if (search_config.search_type == SearchType::TURKEY) {
+		// Create the DEM and filter model
+		Model<bool> *filter;
+		Model<short> *DEM = read_DEM_with_borders(search_config.grid_square, border);
+
+		if (search_config.logger.output_debug()) {
+			printf("\nAfter border added:\n");
+			DEM->print();
+		}
+		if (debug_output) {
+			mkdir(convert_string("debug"), 0777);
+			mkdir(convert_string("debug/input"), 0777);
+			DEM->write("debug/input/" + str(search_config.grid_square) + "_input.tif", GDT_Int16);
+		}
+
+		t_usec = walltime_usec();
+		filter = read_filter(DEM, filter_filenames);
+		if (search_config.logger.output_debug()) {
+			printf("\nFilter:\n");
+			filter->print();
+			printf("Filter Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/filter"),0777);
+			filter->write(file_storage_location+"debug/filter/"+str(search_config.grid_square)+"_filter.tif", GDT_Byte);
+		}
+
+		t_usec = walltime_usec();
+		
+		Model<bool> *turkey_flat_mask;
+		Model<bool> *turkey_depression_mask;
+		int turkey_count = 0;
+
+		// Create a mask of all flat land in DEM (excluding water bodies with 0 degree slope)
+		t_usec = walltime_usec();
+		Model<float> *DEM_float = read_float_DEM_with_borders(search_config.grid_square, border); // Float accuracy required to find water bodies, since require slope of exactly 0
+		turkey_flat_mask = find_flat_land(DEM_float, filter, max_turkey_slope);
+		delete DEM_float;
+
+		if (search_config.logger.output_debug()) {
+			printf("\nTurkey Flat Mask:\n");
+			turkey_flat_mask->print();
+			printf("Turkey flat mask Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/turkey_flat_mask"),0777);
+			turkey_flat_mask->write(file_storage_location+"debug/turkey_flat_mask/"+str(search_config.grid_square)+"_turkey_flat_mask.tif", GDT_Byte);
+		}		
+
+		// Fill all sinks and remove flat regions from DEM
+		t_usec = walltime_usec();
+		Model<double>* DEM_filled_no_flat = fill(DEM);
+		Model<short>* DEM_filled = new Model<short>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+		DEM_filled->set_geodata(DEM->get_geodata());
+		for(int row = 0; row<DEM->nrows();row++) {
+			for(int col = 0; col<DEM->ncols();col++) {
+				DEM_filled->set(row, col, convert_to_int(DEM_filled_no_flat->get(row, col)));
+			}
+		}
+
+		if (search_config.logger.output_debug()) {
+			printf("\nFilled No Flats:\n");
+			DEM_filled_no_flat->print();
+			printf("Fill Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/DEM_filled"),0777);
+			DEM_filled->write(file_storage_location+"debug/DEM_filled/"+str(search_config.grid_square)+"_DEM_filled.tif", GDT_Int16);
+			DEM_filled_no_flat->write(file_storage_location+"debug/DEM_filled/"+str(search_config.grid_square)+"_DEM_filled_no_flat.tif",GDT_Float64);
+		}
+
+		delete DEM_filled_no_flat;
+
+		// Create a mask for all depressions > threshold depth
+		t_usec = walltime_usec();
+		turkey_depression_mask = find_depressions(DEM, DEM_filled, filter);
+		/* for(int row = 0; row<DEM->nrows(); row++){
+			for(int col = 0; col<DEM->ncols(); col++){
+				if ((DEM_filled->get(row,col) - DEM->get(row, col) >= depression_depth_min) && (!filter->get(row,col)))
+					turkey_depression_mask->set(row,col,true);
+			}
+		} */
+
+		if (search_config.logger.output_debug()) {
+			printf("\nTurkey Depression Mask:\n");
+			turkey_depression_mask->print();
+			printf("Turkey depression mask Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/turkey_depression_mask"),0777);
+			turkey_depression_mask->write(file_storage_location+"debug/turkey_depression_mask/"+str(search_config.grid_square)+"_turkey_depression_mask.tif", GDT_Byte);
+		}
+
+		// Model turkey nests
+		turkey_count = model_turkey_reservoirs(turkey_flat_mask, turkey_depression_mask, DEM);
+
+		search_config.logger.debug("Found " + to_string(turkey_count) + " reservoirs. Runtime: " + to_string(1.0e-6*(walltime_usec() - t_usec)) + " sec");
+		
+		printf(convert_string("Screening finished for " + search_config.filename() +
+                          ". Runtime: %.2f sec\n"),
+           1.0e-6 * (walltime_usec() - start_usec));
+
    // Brownfield searching based on individual pits
    } else if (search_config.search_type == SearchType::SINGLE_PIT) {
     FILE *csv_file = fopen(convert_string(file_storage_location + "output/reservoirs/" +

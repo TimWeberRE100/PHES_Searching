@@ -560,3 +560,31 @@ RoughBfieldReservoir pit_to_rough_reservoir(BulkPit pit, GeographicCoordinate lo
     	reservoir.shape_bound.push_back(convert_coordinates(c, origin));
 	return reservoir;
 }
+
+RoughTurkeyReservoir turkey_to_rough_reservoir(TurkeyCharacteristics turkey){
+	RoughReservoir reservoir;
+	GeographicCoordinate centre_gc = convert_coordinates(turkey.centre_point);
+
+	reservoir.identifier = turkey.identifier;
+	reservoir.turkey = true;
+    reservoir.brownfield = false;
+    reservoir.ocean = false;
+	reservoir.pour_point = turkey.centre_point;
+	reservoir.watershed_area = turkey.area;
+	reservoir.latitude = centre_gc.lat;
+	reservoir.longitude = centre_gc.lon;
+	reservoir.elevation = turkey.min_elevation;
+	for(uint i = 0; i<dam_wall_heights.size(); i++){
+		reservoir.volumes.push_back(turkey.volumes[i]);
+		reservoir.dam_volumes.push_back(turkey.dam_volumes[i]);
+		reservoir.areas.push_back(turkey.area);
+		reservoir.water_rocks.push_back(turkey.water_rocks[i]);
+    }
+
+	RoughTurkeyReservoir turkey_reservoir(reservoir);
+	GeographicCoordinate origin = get_origin(search_config.grid_square, border);
+	for(GeographicCoordinate c : turkey.polygon)
+    	turkey_reservoir.shape_bound.push_back(convert_coordinates(c, origin));
+
+	return turkey_reservoir;
+}

@@ -231,6 +231,13 @@ void write_rough_reservoir_data(FILE *csv_file, RoughReservoir *reservoir) {
       for(int e : br->elevations)
         line.push_back(to_string(e));
   }
+  if(RoughTurkeyReservoir* br = dynamic_cast<RoughTurkeyReservoir*>(reservoir)){
+    line.push_back(to_string(br->shape_bound.size()));
+    for(ArrayCoordinate c : br->shape_bound){
+      line.push_back(to_string(c.row));
+      line.push_back(to_string(c.col));
+    }
+  }
   write_to_csv_file(csv_file, line);
 }
 
@@ -324,9 +331,16 @@ vector<unique_ptr<RoughReservoir>> read_rough_reservoir_data(char *filename) {
       }
       if(reservoir->river)
         for(int i = 0; i<point_len; i++){
-          bfield_reservoir->elevations.push_back(stoi(line[10+3*dam_wall_heights.size()+2*point_len+i]));
+          bfield_reservoir->elevations.push_back(stoi(line[10+4*dam_wall_heights.size()+2*point_len+i]));
         }
       reservoirs.push_back(std::move(bfield_reservoir));
+    } else if(reservoir->turkey){
+      int point_len = stoi(line[9+4*dam_wall_heights.size()]);
+      unique_ptr<RoughTurkeyReservoir> turkey_reservoir(new RoughTurkeyReservoir(*reservoir));
+      for(int i = 0; i<point_len; i++){
+        turkey_reservoir->shape_bound.push_back(ArrayCoordinate_init(stoi(line[10+4*dam_wall_heights.size()+i*2]), stoi(line[10+4*dam_wall_heights.size()+i*2+1]), origin));
+      }
+      reservoirs.push_back(std::move(turkey_reservoir));
     }
   }
   if (header) {

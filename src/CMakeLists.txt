@@ -9,6 +9,7 @@ set(UTIL_SOURCES
     constructor_helpers.cpp
     model2D.cpp
     search_config.cpp
+    turkey.cpp
     mining_pits.cpp)
 
 include_directories(${MPI_CXX_INCLUDE_PATH} ${JSON_INCLUDE_PATH})

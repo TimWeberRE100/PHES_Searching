@@ -8,7 +8,7 @@
 
 class SearchType {
   public:
-    enum type {GREENFIELD, OCEAN, SINGLE_EXISTING, BULK_EXISTING, BULK_PIT, SINGLE_PIT};
+    enum type {GREENFIELD, OCEAN, SINGLE_EXISTING, BULK_EXISTING, BULK_PIT, SINGLE_PIT, TURKEY};
     constexpr SearchType(type search_type) : value(search_type){}
     constexpr operator type() const { return value; }
 
@@ -16,10 +16,10 @@ class SearchType {
       return value == SINGLE_EXISTING || value == BULK_EXISTING || value == BULK_PIT || value == SINGLE_PIT;
     }
     bool not_existing(){
-      return value == GREENFIELD || value == OCEAN;
+      return value == GREENFIELD || value == OCEAN || value == TURKEY;
     }
     bool grid_cell(){
-      return value == GREENFIELD || value == OCEAN || value == BULK_EXISTING || value == BULK_PIT;
+      return value == GREENFIELD || value == OCEAN || value == BULK_EXISTING || value == BULK_PIT || value == TURKEY;
     }
     bool single(){
       return value == SINGLE_EXISTING || value == SINGLE_PIT;
@@ -36,6 +36,8 @@ class SearchType {
           return "pit_";
         case BULK_EXISTING:
           return "existing_";
+        case TURKEY:
+          return "turkey_";
         default:
           return "";
       }
@@ -118,6 +120,10 @@ class SearchConfig {
         arg1 = argv[1 + adj];
       } else if (arg1.compare("bulk_pit") == 0) {
         search_type = SearchType::BULK_PIT;
+        adj = 1;
+        arg1 = argv[1 + adj];
+      } else if (arg1.compare("turkey") == 0) {
+        search_type = SearchType::TURKEY;
         adj = 1;
         arg1 = argv[1 + adj];
       }
