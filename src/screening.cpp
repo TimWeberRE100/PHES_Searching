@@ -850,7 +850,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 			if ((turkey_flat_mask->get(row,col)) && (!seen_f->get(row,col))) {
 				// Locate flat region based upon interconnected cells on the mask
 				std::vector<ArrayCoordinate> interconnected_flat_points;
-				double interconnected_flat_area = flat_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points);
+				double interconnected_flat_area = mask_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points);
 				
 				if (interconnected_flat_area < min_watershed_area){
 					//printf("Success 2 %.2f %i\n", interconnected_flat_area, (int)interconnected_flat_points.size());
@@ -885,7 +885,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 
 					i++;
 
-					turkey.identifier = str(search_config.grid_square) + "_TURKEY" + str(i);
+					turkey.identifier = str(search_config.grid_square) + "_TURKEYF" + str(i);
 					//printf("Success 6\n");
 					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
 						
@@ -905,32 +905,31 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 
 			// Model turkey nests around natural depressions
 			/* if ((turkey_depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
-				printf("Success 8\n");
-				Model<bool> *individual_turkey_mask = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
-				individual_turkey_mask->set_geodata(DEM->get_geodata());
+				//printf("Success 8\n");
+				std::vector<ArrayCoordinate> individual_turkey_region;
 
 				TurkeyCharacteristics turkey(row,col,DEM->get_origin());
 
+				double interconnected_depression_area = mask_area_calculator(row, col, turkey_depression_mask, seen_d, individual_turkey_region);
+
+				if(interconnected_depression_area < 0.5*min_watershed_area)
+					continue;
+
 				i++;
 
-				bool model_check = model_turkey_nest(csv_file, csv_data_file, turkey_depression_mask, seen_d, individual_turkey_mask, DEM, turkey, false);
+				turkey.identifier = str(search_config.grid_square) + "_TURKEYD" + str(i);
+
+				bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, false);
 				printf("Success 9\n");
 				if(!model_check)
 					continue;
 				else
 				 	res_count++;
 
-				if(debug_output){
-					for(int row = 0; row<individual_turkey_mask->nrows();row++) {
-						for(int col = 0; col<individual_turkey_mask->ncols();col++) {
-							if(individual_turkey_mask->get(row,col)){
-								turkey_mask_debug->set(row,col,true);
-							}
-						}
-					}
-				}
+				if(debug_output)
+					for(ArrayCoordinate point : turkey.reservoir_points)
+							turkey_mask_debug->set(point.row, point.col, true);
 
-				delete individual_turkey_mask;
 				printf("Success 10\n");
 			} 	 */		
 		}
@@ -1169,12 +1168,6 @@ int main(int nargs, char **argv) {
 		// Create a mask for all depressions > threshold depth
 		t_usec = walltime_usec();
 		turkey_depression_mask = find_depressions(DEM, DEM_filled, filter);
-		/* for(int row = 0; row<DEM->nrows(); row++){
-			for(int col = 0; col<DEM->ncols(); col++){
-				if ((DEM_filled->get(row,col) - DEM->get(row, col) >= depression_depth_min) && (!filter->get(row,col)))
-					turkey_depression_mask->set(row,col,true);
-			}
-		} */
 
 		if (search_config.logger.output_debug()) {
 			printf("\nTurkey Depression Mask:\n");

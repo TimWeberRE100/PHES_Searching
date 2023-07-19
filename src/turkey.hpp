@@ -38,7 +38,7 @@ struct TurkeyCharacteristics {
     }
 };
 
-double flat_area_calculator(int row, int col, Model<bool> *turkey_flat_mask, Model<bool> *seen, std::vector<ArrayCoordinate> &interconnected_flat_points);
+double mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<ArrayCoordinate> &interconnected_points);
 double find_fishnet_area(std::vector<ArrayCoordinate> &large_region, int max_area, std::vector<ArrayCoordinate> &small_region);
 Model<bool>* find_flat_land(Model<float> *DEM, Model<bool> *filter, int maximum_slope);
 void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM);
