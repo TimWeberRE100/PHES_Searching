@@ -574,11 +574,13 @@ RoughTurkeyReservoir turkey_to_rough_reservoir(TurkeyCharacteristics turkey){
 	reservoir.latitude = centre_gc.lat;
 	reservoir.longitude = centre_gc.lon;
 	reservoir.elevation = turkey.min_elevation;
+	reservoir.max_dam_height = max_turkey_dam_height;
 	for(uint i = 0; i<dam_wall_heights.size(); i++){
 		reservoir.volumes.push_back(turkey.volumes[i]);
 		reservoir.dam_volumes.push_back(turkey.dam_volumes[i]);
 		reservoir.areas.push_back(turkey.area);
 		reservoir.water_rocks.push_back(turkey.water_rocks[i]);
+		reservoir.fill_depths.push_back(dam_wall_heights[i]);
     }
 
 	RoughTurkeyReservoir turkey_reservoir(reservoir);

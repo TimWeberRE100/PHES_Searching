@@ -75,6 +75,7 @@ extern double pit_lake_relative_depth;  // Pit lakes typically have a relative d
 
 extern int max_turkey_area;  // Maximum area (ha) of a turkey nest screening polygon
 extern int max_turkey_slope;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
+extern int max_turkey_dam_height; // Maximum height (m) of turkey nest dams
 
 // Pairing
 extern int min_head; // Minimum head (m) to be considered a potential pair

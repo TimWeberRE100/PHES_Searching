@@ -1,9 +1,11 @@
 #include "coordinates.h"
 #include "model2D.h"
 #include "phes_base.h"
+#include "search_config.hpp"
 #include "turkey.hpp"
 #include "mining_pits.h"
 #include "constructor_helpers.hpp"
+#include <algorithm>
 #include <array>
 
 double flat_area_calculator(int row, int col, Model<bool> *turkey_flat_mask, Model<bool> *seen, std::vector<ArrayCoordinate> &interconnected_flat_points){
@@ -17,7 +19,7 @@ double flat_area_calculator(int row, int col, Model<bool> *turkey_flat_mask, Mod
 	while (!q.empty()) {
 		ArrayCoordinate p = q.front();
 		q.pop();
-        printf("%i %i %i\n", p.row, p.col, (int)q.size());
+        //printf("%i %i %i\n", p.row, p.col, (int)q.size());
 
 		if(seen->get(p.row,p.col))
 			continue;
@@ -68,7 +70,7 @@ double find_fishnet_area(std::vector<ArrayCoordinate> &large_region, int max_are
         col_length = find_distance(seed_point, col_end);
     }
 
-    printf("Checks: %i %i %.2f %.2f %.2f\n", row_cells, col_cells, row_length, col_length, square_side_length);
+    //printf("Checks: %i %i %.2f %.2f %.2f\n", row_cells, col_cells, row_length, col_length, square_side_length);
 
     // Define the small polygon contained within the large polygon, starting at the seed point
     // Use erase-remove idiom to delete those points from the large_polygon
@@ -117,19 +119,27 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM){
     // Find the elevation of all points on the dam wall
     std::vector<int> dam_base_elevations;
     int lowest_dam_elevation = INT_MAX;
+    //printf("Volumes 1 %i %i %i\n", (int)turkey.polygon.size(), convert_coordinates(turkey.polygon[0], get_origin(search_config.grid_square,border)).row, convert_coordinates(turkey.polygon[0], get_origin(search_config.grid_square,border)).col);
     for (GeographicCoordinate point : turkey.polygon){
+        /* printf("Point1: %.6f %.6f, %.6f %.6f\n", point.lat, point.lon,get_origin(search_config.grid_square,border).lat,get_origin(search_config.grid_square,border).lon);
+        printf("Point2: %i\n", DEM->get(point)); */
+        
         dam_base_elevations.push_back(DEM->get(point));
         lowest_dam_elevation = MIN(lowest_dam_elevation, DEM->get(point));         
     }       
 
     // Find the elevation of all points within the reservoir
     std::vector<int> reservoir_elevations;
+    //printf("Volumes 2 %i\n", (int)turkey.reservoir_points.size());
     for (ArrayCoordinate point : turkey.reservoir_points){
         reservoir_elevations.push_back(DEM->get(point.row, point.col));
     }
 
 
     for (uint dam_height_i = 0; dam_height_i<dam_wall_heights.size(); dam_height_i++) {
+        if(dam_wall_heights[dam_height_i] > max_turkey_dam_height)
+            continue;
+
         ////// NEED TO DO COMPLEX VOLUME MODEL INCLUDING FREEBOARD AND BATTER
         // Determine maximum dam top elevation
         int max_dam_top_elevation = lowest_dam_elevation + dam_wall_heights[dam_height_i];
@@ -139,10 +149,11 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM){
         int dam_point_count = 0;
 
         double dam_wall_length = 0;
-        GeographicCoordinate previous_point = {1000,1000};
-        GeographicCoordinate first_point = {1000,1000};
+        GeographicCoordinate previous_point = {-1,-1};
+        GeographicCoordinate first_point = {-1,-1};
         bool full_circle = true;
 
+        //printf("Volumes 3 %i\n", (int)dam_base_elevations.size());
         for(uint idx = 0; idx<dam_base_elevations.size(); idx++){
             if(max_dam_top_elevation - dam_base_elevations[idx] < 0){
                 previous_point = turkey.polygon[idx];
@@ -189,9 +200,9 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM){
         double reservoir_volume = original_volume + dam_volume/2; // GL
 
         // Update the turkey nest object
-        turkey.volumes.push_back(reservoir_volume);
-        turkey.dam_volumes.push_back(dam_volume);
-        turkey.water_rocks.push_back(reservoir_volume / dam_volume);
+        turkey.volumes[dam_height_i] = reservoir_volume;
+        turkey.dam_volumes[dam_height_i] = dam_volume;
+        turkey.water_rocks[dam_height_i] = reservoir_volume / dam_volume;
     }
 }
 
@@ -238,25 +249,25 @@ Circle find_minimum_enclosing_circle(std::vector<ArrayCoordinate> region_points)
 
 bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoordinate> &individual_turkey_region, 
 								Model<short> *DEM, TurkeyCharacteristics &turkey, bool flat_check) {    
-    
+    /* Circle reference_point({-1,-1,get_origin(search_config.grid_square,border)},0);
     if (flat_check) {
 		// Find Pole of Inaccesibility - the centre of the maximum inscribed circle for the individual turkey region
-        // POLE OF INACCESSIBILITY BROKEN - RADIUS IS TOO SMALL AND IT TAKES TOO LONG
         printf("seg1\n");
-		Circle pole = find_pole_of_inaccessibility(individual_turkey_region);
-		turkey.centre_point = pole.centre_point;
-		turkey.radius = pole.radius;
-        printf("seg2 %i %i %.2f\n", pole.centre_point.row, pole.centre_point.col, pole.radius);
+		reference_point = find_pole_of_inaccessibility(individual_turkey_region);
         
 	} else {
 		// Find minimum enclosing circle for the depression
-		Circle mec = find_minimum_enclosing_circle(individual_turkey_region);
-		turkey.centre_point = mec.centre_point;
-		turkey.radius = mec.radius;
-	}
+		reference_point = find_minimum_enclosing_circle(individual_turkey_region);
+	}*/
 
+    // Define key attributes
+    turkey.centre_point = individual_turkey_region[0];//reference_point.centre_point;
+	//turkey.radius = reference_point.radius; // metres
+    turkey.min_elevation = DEM->get(turkey.centre_point.row, turkey.centre_point.col);
+    //printf("seg2 %i %i %.2f %i\n", turkey.centre_point.row, turkey.centre_point.col, turkey.radius, turkey.min_elevation);
+    /*
     // Calculate turkey nest area
-    turkey.area = pi * turkey.radius * turkey.radius * 100; // km2 to Ha
+    turkey.area = pi * turkey.radius * turkey.radius / 10000; // m2 to Ha
 
     // If the turkey's nest is too small, skip modelling
 	if (turkey.area < min_watershed_area){
@@ -265,27 +276,43 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
     printf("seg3, %.2f %.2f\n", turkey.area, turkey.radius);
 	
     // Define the mask for the turkey nest surrounding the depression
-    for (int row = 0; row<DEM->nrows(); row++)
-        for (int col = 0; col<DEM->ncols(); col++) {
+    double cell_width = 1000*find_distance(turkey.centre_point,{turkey.centre_point.row,turkey.centre_point.col+1, turkey.centre_point.origin});
+    double cell_height = 1000*find_distance(turkey.centre_point,{turkey.centre_point.row+1,turkey.centre_point.col, turkey.centre_point.origin});
+    int minimum_row = turkey.centre_point.row - int(turkey.radius / cell_height + 1);
+    int minimum_col = turkey.centre_point.col - int(turkey.radius / cell_width + 1);
+    int maximum_row = turkey.centre_point.row + int(turkey.radius / cell_height + 1);
+    int maximum_col = turkey.centre_point.col + int(turkey.radius / cell_width + 1);
+    printf("%i %i %i %i, centre: %i %i, ratio: %.2f %.2f\n", minimum_row, maximum_row, minimum_col, maximum_col, turkey.centre_point.row, turkey.centre_point.col,turkey.radius/cell_height,turkey.radius/cell_width);
+
+    for (int row = minimum_row; row<maximum_row; row++)
+        for (int col = minimum_col; col<maximum_col; col++) {
             ArrayCoordinate c = {row, col, DEM->get_origin()};
-            double distance_from_centre = find_distance(c, turkey.centre_point);
+            double distance_from_centre = find_distance(c, turkey.centre_point)*1000; // metres
 
             if (distance_from_centre <= turkey.radius) {
+                if(!DEM->check_within(c.row, c.col))
+                    return false;
+
                 turkey.reservoir_points.push_back(c);
             }
-        }
+        } */
+    
+    turkey.reservoir_points = individual_turkey_region;
 
-    printf("seg4\n");
+    //printf("seg4 %i\n", (int)turkey.reservoir_points.size());
     // Find the dam wall polygon
     turkey.polygon = convert_poly(find_edge(turkey.reservoir_points));
+    //printf("seg5 %i\n", (int)turkey.polygon.size());
 
     // Calculate turkey's nest reservoir volume, dam volume, and water-to-rock ratio at all test dam heights
     update_turkey_volumes(turkey, DEM);
-    printf("seg7\n");
+    //printf("seg7\n");
     RoughTurkeyReservoir reservoir = turkey_to_rough_reservoir(turkey);
-	printf("seg8\n");
+	//printf("seg8\n");
     write_rough_reservoir_csv(csv_file, &reservoir);
+    //printf("seg8.1\n");
 	write_rough_reservoir_data(csv_data_file, &reservoir);
+    //printf("seg9\n");
 
     return true;
 }

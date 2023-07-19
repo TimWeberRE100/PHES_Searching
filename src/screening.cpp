@@ -693,7 +693,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 	// Locate pit lakes based upon interconnected cells on the mask
 	for(int row = 0; row<DEM->nrows();row++) {
 		for(int col = 0; col<DEM->ncols();col++) {	
-			if ((!pit_lake_mask->get(row,col)) || (!depression_mask->get(row,col))) {
+			if ((!pit_lake_mask->get(row,col)) && (!depression_mask->get(row,col))) {
 				continue;
 			}
 			
@@ -835,7 +835,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 	}
 	write_rough_reservoir_data_header(csv_data_file);
 
-	printf("Success 1\n");
+	//printf("Success 1\n");
 	for(int row = 0; row<DEM->nrows();row++) {
 		for(int col = 0; col<DEM->ncols();col++) {	
 			if ((!turkey_flat_mask->get(row,col)) && (!turkey_depression_mask->get(row,col))) {
@@ -853,19 +853,19 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 				double interconnected_flat_area = flat_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points);
 				
 				if (interconnected_flat_area < min_watershed_area){
-					printf("Success 2 %.2f %i\n", interconnected_flat_area, (int)interconnected_flat_points.size());
+					//printf("Success 2 %.2f %i\n", interconnected_flat_area, (int)interconnected_flat_points.size());
 					continue;
 				}
 
-				int counter = 0; //DEBUG
+				//int counter = 0; //DEBUG
 				while(!interconnected_flat_points.empty()) {
-					counter++; //DEBUG
-					printf("Success 3 %i %i %i %i %i %i\n", row, col, interconnected_flat_points[0].row, interconnected_flat_points[0].col, int(interconnected_flat_points.size()), counter);
+					//counter++; //DEBUG
+					//printf("Success 3 %i %i %i %i %i %i\n", row, col, interconnected_flat_points[0].row, interconnected_flat_points[0].col, int(interconnected_flat_points.size()), counter);
 
 					std::vector<ArrayCoordinate> individual_turkey_region;
 
 					// If the interconnected flat area is very large, fishnet into smaller squares
-					printf("Success 4\n");
+					//printf("Success 4\n");
 					int individual_region_area = 0;
 					if (interconnected_flat_area > max_turkey_area)
 						individual_region_area = find_fishnet_area(interconnected_flat_points, max_turkey_area, individual_turkey_region); 
@@ -874,7 +874,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 						individual_region_area = interconnected_flat_area;
 						interconnected_flat_points.clear();
 					}
-					printf("Success 5\n");
+					//printf("Success 5\n");
 					// Find the individual turkey nest (largest inscribed circle within the individual turkey region)
 					
 					if (individual_region_area < min_watershed_area){
@@ -886,7 +886,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 					i++;
 
 					turkey.identifier = str(search_config.grid_square) + "_TURKEY" + str(i);
-					printf("Success 6\n");
+					//printf("Success 6\n");
 					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
 						
 					if(model_check)
@@ -895,18 +895,11 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 						continue;
 					}
 						
-
-					/* if(debug_output){
-						for(int row = 0; row<individual_turkey_mask->nrows();row++) {
-							for(int col = 0; col<individual_turkey_mask->ncols();col++) {
-								if(individual_turkey_mask->get(row,col)){
-									turkey_mask_debug->set(row,col,true);
-								}
-							}
-						}
-					}	 */
+					if(debug_output)
+						for(ArrayCoordinate point : turkey.reservoir_points)
+							turkey_mask_debug->set(point.row, point.col, true);
 	
-					printf("Success 7\n");	
+					//printf("Success 7\n");	
 				}				
 			}
 
@@ -945,7 +938,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 	fclose(csv_file);
     fclose(csv_data_file);
 
-	printf("Success 11\n");
+	//printf("Success 11\n");
 
 	if(debug_output){
 		mkdir(convert_string(file_storage_location+"debug/turkey_mask_debug"),0777);
