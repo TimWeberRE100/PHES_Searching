@@ -309,7 +309,7 @@ vector<unique_ptr<RoughReservoir>> read_rough_reservoir_data(char *filename) {
     reservoir->watershed_area = stod(line[5]);
     reservoir->identifier = line[0];
 
-    if(!compressed_format || (!reservoir->ocean && !reservoir->brownfield)){
+    if(!compressed_format || (!reservoir->ocean && !reservoir->brownfield && !reservoir->turkey)){
       unique_ptr<RoughGreenfieldReservoir> greenfield_reservoir(new RoughGreenfieldReservoir(*reservoir));
       for (uint ih = 0; ih < dam_wall_heights.size(); ih++) {
         for (uint idir = 0; idir < directions.size(); idir++) {
@@ -457,6 +457,7 @@ void write_rough_pair_data(FILE *csv_file, Pair *pair) {
       dtos(pair->upper.max_dam_height, 1),
       dtos(pair->upper.water_rock, 5),
       dtos(pair->upper.area, 1),
+      dtos(pair->upper.fill_depth, 1),
       pair->upper.river ? "3" : (pair->upper.pit ? "2" : to_string(pair->upper.brownfield)),
       pair->lower.identifier,
       dtos(pair->lower.latitude, 6),
@@ -466,6 +467,7 @@ void write_rough_pair_data(FILE *csv_file, Pair *pair) {
       dtos(pair->lower.max_dam_height, 1),
       dtos(pair->lower.water_rock, 5),
       dtos(pair->lower.area, 1),
+      dtos(pair->lower.fill_depth, 1),
       pair->lower.river ? "3" : (pair->lower.pit ? "2" : to_string(pair->lower.brownfield)),
       to_string(pair->lower.ocean),
       to_string(pair->head),

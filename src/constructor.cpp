@@ -100,9 +100,9 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   }
 
   // Check overlap between reservoirs during pit and existing reservoir constructor
-  if (pair->upper.brownfield || pair->lower.brownfield) {
+  if (pair->upper.brownfield || pair->lower.brownfield || pair->upper.turkey || pair->lower.turkey) {
     // Overlap between upper and lower reservoirs
-    if(check_within(convert_coordinates(pair->upper.pour_point), convert_poly(pair->lower.shape_bound)) || check_within(convert_coordinates(pair->lower.pour_point), convert_poly(pair->upper.shape_bound)))
+    if(check_within(convert_coordinates(pair->upper.pour_point), convert_poly(pair->lower.reservoir_polygon)) || check_within(convert_coordinates(pair->lower.pour_point), convert_poly(pair->upper.reservoir_polygon)))
       return false;
     
     // Overlap with other sites

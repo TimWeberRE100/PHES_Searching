@@ -10,11 +10,11 @@ bool check_pair(Pair &pair, Model<bool> *seen, BigModel &big_model, set<string>&
     return false;
   if(pair.lower.river && !use_tiled_rivers)
     return false;
-  if (!pair.upper.brownfield &&
+  if (!pair.upper.brownfield && !pair.upper.turkey &&
       !model_reservoir(&pair.upper, NULL, seen, NULL, &used_points, big_model, NULL,
                        empty_countries, empty_country_names))
     return false;
-  if (!pair.lower.brownfield && !pair.lower.ocean &&
+  if (!pair.lower.brownfield && !pair.lower.ocean && !pair.lower.turkey &&
       !model_reservoir(&pair.lower, NULL, seen, NULL, &used_points, big_model, NULL,
                        empty_countries, empty_country_names))
     return false;

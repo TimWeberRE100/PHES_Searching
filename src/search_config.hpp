@@ -54,6 +54,8 @@ class SearchType {
         return "existing_";
       case BULK_PIT:
         return "pit_";
+      case TURKEY:
+        return "turkey_";
       default:
         return "";
       }
