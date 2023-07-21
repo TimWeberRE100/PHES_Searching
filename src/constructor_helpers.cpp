@@ -579,7 +579,7 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
                      vector<vector<vector<GeographicCoordinate>>> &countries,
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model) {
-  printf("Success 2\n");
+  //printf("Success 2\n");
   string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation);
   coordinates->reservoir = polygon_string;
   reservoir->reservoir_polygon = reservoir->shape_bound;
@@ -590,7 +590,7 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
           break;
       }
   }
-  printf("Res size: %i %i %i\n", (int)reservoir->shape_bound.size(), reservoir->shape_bound[0].row, reservoir->shape_bound[0].col);
+  //printf("Res size: %i %i %i\n", (int)reservoir->shape_bound.size(), reservoir->shape_bound[0].row, reservoir->shape_bound[0].col);
 
   if (reservoir->turkey){
     Model<short> *DEM = big_model.DEM;
@@ -605,7 +605,7 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
     
     model_dam_wall(reservoir, coordinates, DEM, reservoir->reservoir_polygon, full_cur_model, offset);
   }
-  printf("Success 3\n");
+  //printf("Success 3\n");
   
   return true;
 }

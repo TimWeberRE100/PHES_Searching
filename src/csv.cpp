@@ -686,7 +686,7 @@ void read_pit_polygons(std::string filename, vector<Pair> &pairs, GridSquare gs)
   ifstream inputFile(filename);
   string s;
   bool header = true;
-  printf("Success 1\n");
+  //printf("Success 1\n");
   
   while (getline(inputFile, s)) {
     if (header) {
@@ -696,6 +696,7 @@ void read_pit_polygons(std::string filename, vector<Pair> &pairs, GridSquare gs)
     }
     vector<string> line = read_from_csv_file(s);
     GeographicCoordinate origin = get_origin(gs, border);
+    //printf("ACs %.6f %.6f %i %i\n", origin.lat, origin.lon, gs.lat, gs.lon);
     
     for(Pair &pair : pairs){
       if (pair.upper.identifier == line[0]){
@@ -712,7 +713,6 @@ void read_pit_polygons(std::string filename, vector<Pair> &pairs, GridSquare gs)
         for(int i = 0; i<point_len; i++){
           ArrayCoordinate array_point = convert_coordinates(convert_coordinates(ArrayCoordinate_init(stoi(line[10+4*dam_wall_heights.size()+i*2]), stoi(line[10+4*dam_wall_heights.size()+i*2+1]), origin)), get_origin(search_config.grid_square, border));
           pair.lower.shape_bound.push_back(array_point);
-          printf("ACs %i %i\n", array_point.row, array_point.col);
         }   
       }
     }    
