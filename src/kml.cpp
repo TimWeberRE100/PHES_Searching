@@ -429,6 +429,11 @@ string output_kml(KML_Holder* kml_holder, string square, Test test){
 }
 
 void update_kml_holder(KML_Holder* kml_holder, Pair* pair, Pair_KML* pair_kml, bool keep_upper, bool keep_lower){
+	if(pair->lower.turkey){
+		printf("KML1: %s", pair_kml->lower.reservoir.c_str());
+		//printf("KML2: %s", pair_kml->lower.dam[0]);
+	}
+
 	kml_holder->points.push_back(get_point_kml(pair, pair_kml->point));
 	kml_holder->lines.push_back(get_line_kml(pair, pair_kml->line));
 	if (keep_upper) {

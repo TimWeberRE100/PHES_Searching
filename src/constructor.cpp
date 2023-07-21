@@ -50,9 +50,9 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
     if (!model_existing_reservoir(&pair->upper, &pair_kml->upper, countries,
                                   country_names))
       return false;
-  } else if (pair->upper.brownfield && (search_config.search_type == SearchType::BULK_PIT)) {
-    if (!model_bulk_pit(&pair->upper, &pair_kml->upper,
-                              countries, country_names)){
+  } else if ((pair->upper.brownfield && (search_config.search_type == SearchType::BULK_PIT)) || pair->upper.turkey) {
+    if (!model_from_shapebound(&pair->upper, &pair_kml->upper,
+                              countries, country_names, full_cur_model, big_model)){
       return false;
     }
   } else if (!model_reservoir(&pair->upper, &pair_kml->upper, seen, non_overlap,
@@ -64,9 +64,9 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
     if (!model_existing_reservoir(&pair->lower, &pair_kml->lower, countries,
                                   country_names))
       return false;
-  } else if (pair->lower.brownfield && (search_config.search_type == SearchType::BULK_PIT)){
-    if (!model_bulk_pit(&pair->lower, &pair_kml->lower, 
-                              countries, country_names)){
+  } else if ((pair->lower.brownfield && (search_config.search_type == SearchType::BULK_PIT)) || pair->lower.turkey){
+    if (!model_from_shapebound(&pair->lower, &pair_kml->lower, 
+                              countries, country_names, full_cur_model, big_model)){
       return false;
     }
   
@@ -98,18 +98,20 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   if (pair->FOM > max_FOM || pair->category == 'Z') {
     return false;
   }
-
+  printf("Success 3\n");
   // Check overlap between reservoirs during pit and existing reservoir constructor
   if (pair->upper.brownfield || pair->lower.brownfield || pair->upper.turkey || pair->lower.turkey) {
     // Overlap between upper and lower reservoirs
     if(check_within(convert_coordinates(pair->upper.pour_point), convert_poly(pair->lower.reservoir_polygon)) || check_within(convert_coordinates(pair->lower.pour_point), convert_poly(pair->upper.reservoir_polygon)))
       return false;
+    printf("Success 4\n");
     
     // Overlap with other sites
     *non_overlap = !(check_within(convert_coordinates(pair->upper.pour_point), seen_polygons) || check_within(convert_coordinates(pair->lower.pour_point), seen_polygons));
     
-    seen_polygons.push_back(convert_poly(pair->upper.shape_bound));
-    seen_polygons.push_back(convert_poly(pair->lower.shape_bound));
+    seen_polygons.push_back(convert_poly(pair->upper.reservoir_polygon));
+    seen_polygons.push_back(convert_poly(pair->lower.reservoir_polygon));
+    printf("Success 5\n");
   }
 
   if (*non_overlap) {
@@ -125,6 +127,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
     	((convert_coordinates(upper_closest_point).lon+convert_coordinates(lower_closest_point).lon)/2));
     pair_kml->point = dtos(average.lon,5)+","+dtos(average.lat,5)+",0";
     pair_kml->line = dtos(convert_coordinates(upper_closest_point).lon,5)+","+dtos(convert_coordinates(upper_closest_point).lat,5)+",0 "+dtos(convert_coordinates(lower_closest_point).lon,5)+","+dtos(convert_coordinates(lower_closest_point).lat,5)+",0";
+    printf("Success 6\n");
 	return true;
 }
 
@@ -190,14 +193,14 @@ int main(int nargs, char **argv)
       int non_overlapping_count = 0;
       if (pairs[i].size() != 0) {
         // Extract bulk pit shape bounds found during screening
-        if (search_config.search_type == SearchType::BULK_PIT) {  
-          read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
-                          str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
+        if (search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::TURKEY) {  
+          read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/" + 
+                                                          search_config.filename() + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
 
           for (uint d=0; d<directions.size(); d++){   
             GridSquare neighbor_gs = GridSquare_init(search_config.grid_square.lat + directions[d].row, search_config.grid_square.lon+ directions[d].col);
-            read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
-                          str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
+            read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/" + 
+                                                          search_config.filename() + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
           }
         }
 
@@ -221,13 +224,18 @@ int main(int nargs, char **argv)
             int max_FOM = category_cutoffs[0].storage_cost*tests[i].storage_time+category_cutoffs[0].power_cost;
 
             if(model_pair(&pairs[i][j], &pair_kml, seen, &non_overlap, max_FOM, big_model, full_cur_model, countries, country_names, seen_polygons)){
+                printf("Success 7\n");
                 write_pair_csv(csv_file_classes, &pairs[i][j], false);
+                printf("Success 8\n");
                 write_pair_csv(csv_file_FOM, &pairs[i][j], true);
+                printf("Success 9\n");
                 keep_lower = !lowers.contains(pairs[i][j].lower.identifier);
                 keep_upper = !uppers.contains(pairs[i][j].upper.identifier);
                 lowers.insert(pairs[i][j].lower.identifier);
                 uppers.insert(pairs[i][j].upper.identifier);
+                printf("Success 9.1\n");
                 update_kml_holder(&kml_holder, &pairs[i][j], &pair_kml, keep_upper, keep_lower);
+                printf("Success 10\n");
                 count++;
                 if(non_overlap){
                     non_overlapping_count++;
@@ -236,6 +244,7 @@ int main(int nargs, char **argv)
                 }
             }
         }
+        printf("Success 11\n");
         kml_file_classes << output_kml(&kml_holder, search_config.filename(), tests[i]);
         kml_file_FOM << output_kml(&kml_holder, search_config.filename(), tests[i]);
         search_config.logger.debug(to_string(count) + " " + to_string(tests[i].energy_capacity) + "GWh "+to_string(tests[i].storage_time) + "h Pairs");

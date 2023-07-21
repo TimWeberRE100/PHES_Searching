@@ -329,7 +329,7 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
 
     //printf("seg4 %i\n", (int)turkey.reservoir_points.size());
     // Find the dam wall polygon
-    turkey.polygon = convert_poly(find_edge(turkey.reservoir_points));
+    turkey.polygon = convert_poly(order_polygon(find_edge(turkey.reservoir_points)));
     //vector<ArrayCoordinate> dam_poly = find_edge(turkey.reservoir_points); // DEBUG
     //printf("seg5 %i\n", (int)turkey.polygon.size());
 

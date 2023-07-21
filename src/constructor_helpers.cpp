@@ -331,6 +331,85 @@ string str(vector<GeographicCoordinate> polygon, double elevation) {
   return to_return;
 }
 
+bool model_dam_wall(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
+                     Model<short> *DEM, vector<ArrayCoordinate> reservoir_polygon,
+                     Model<char> *full_cur_model, ArrayCoordinate offset){
+  reservoir->dam_volume = 0;
+  reservoir->dam_length = 0;
+  bool is_turkeys_nest = true;
+  vector<vector<ArrayCoordinate>> dam_polygon;
+  bool last = false;
+  vector<bool> polygon_bool;
+  for (uint i = 0; i < reservoir_polygon.size(); i++) {
+    ArrayCoordinate point1 = reservoir_polygon[i];
+    ArrayCoordinate point2 =
+        reservoir_polygon[(i + 1) % reservoir_polygon.size()];
+    if (is_dam_wall(point1, point2, DEM, offset,
+                    reservoir->elevation + reservoir->dam_height)) {
+      polygon_bool.push_back(true);
+
+      ArrayCoordinate *adjacent = get_adjacent_cells(point1, point2);
+      double average_height = (DEM->get(adjacent[0].row + offset.row,
+                                        adjacent[0].col + offset.col) +
+                               DEM->get(adjacent[1].row + offset.row,
+                                        adjacent[1].col + offset.col)) /
+                              2.0;
+      if (full_cur_model->get(adjacent[0].row + offset.row, adjacent[0].col + offset.col) != 1) {
+        full_cur_model->set(adjacent[0].row + offset.row, adjacent[0].col + offset.col, 2);
+
+      } else {
+        full_cur_model->set(adjacent[1].row + offset.row, adjacent[1].col + offset.col, 2);
+      }
+      if (!last) {
+        vector<ArrayCoordinate> temp;
+        temp.push_back(point1);
+        dam_polygon.push_back(temp);
+      }
+      double height =
+          reservoir->elevation + reservoir->dam_height - average_height;
+      double length = find_distance(point1, point2) * 1000;
+      reservoir->dam_volume += convert_to_dam_volume(height, length);
+      reservoir->dam_length += length;
+      dam_polygon[dam_polygon.size() - 1].push_back(point2);
+      last = true;
+    } else {
+      is_turkeys_nest = false;
+      polygon_bool.push_back(false);
+      last = false;
+    }
+  }
+
+  //full_cur_model->write("out2.tif", GDT_Byte);
+  if (polygon_bool[0] && polygon_bool[dam_polygon.size() - 1] &&
+      !is_turkeys_nest && dam_polygon.size() > 1) {
+    for (uint i = 0; i < dam_polygon[dam_polygon.size() - 1].size(); i++) {
+      dam_polygon[0].push_back(dam_polygon[dam_polygon.size() - 1][i]);
+    }
+    dam_polygon.pop_back();
+  }
+
+  for (uint i = 0; i < dam_polygon.size(); i++) {
+    ArrayCoordinate *adjacent = get_adjacent_cells(dam_polygon[i][0], dam_polygon[i][1]);
+    ArrayCoordinate to_check = adjacent[1];
+    if (full_cur_model->get(adjacent[0].row + offset.row, adjacent[0].col + offset.col) == 2)
+      to_check = adjacent[0];
+    vector<GeographicCoordinate> polygon;
+    polygon = compress_poly(
+        corner_cut_poly(convert_poly(convert_to_polygon(full_cur_model, offset, to_check, 2))));
+    string polygon_string =
+        str(polygon, reservoir->elevation + reservoir->dam_height + freeboard);
+    coordinates->dam.push_back(polygon_string);
+  }
+
+  reservoir->volume += (reservoir->dam_volume) / 2;
+  reservoir->water_rock = reservoir->volume / reservoir->dam_volume;
+  reservoir->average_water_depth = reservoir->volume / reservoir->area;
+
+  coordinates->is_turkeys_nest = is_turkeys_nest;
+
+  return true;
+}
+
 /*
  * Accurately model a single reservoir, determining optimal dam wall height for given volume.
  *
@@ -461,83 +540,12 @@ bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinate
 
   // full_cur_model->write("out1.tif", GDT_Byte);
   // DAM WALL
-  reservoir->dam_volume = 0;
-  reservoir->dam_length = 0;
-  bool is_turkeys_nest = true;
-  vector<vector<ArrayCoordinate>> dam_polygon;
-  bool last = false;
-  vector<bool> polygon_bool;
-  for (uint i = 0; i < reservoir_polygon.size(); i++) {
-    ArrayCoordinate point1 = reservoir_polygon[i];
-    ArrayCoordinate point2 =
-        reservoir_polygon[(i + 1) % reservoir_polygon.size()];
-    if (is_dam_wall(point1, point2, DEM, offset,
-                    reservoir->elevation + reservoir->dam_height)) {
-      polygon_bool.push_back(true);
-
-      ArrayCoordinate *adjacent = get_adjacent_cells(point1, point2);
-      double average_height = (DEM->get(adjacent[0].row + offset.row,
-                                        adjacent[0].col + offset.col) +
-                               DEM->get(adjacent[1].row + offset.row,
-                                        adjacent[1].col + offset.col)) /
-                              2.0;
-      if (full_cur_model->get(adjacent[0].row + offset.row, adjacent[0].col + offset.col) != 1) {
-        full_cur_model->set(adjacent[0].row + offset.row, adjacent[0].col + offset.col, 2);
-
-      } else {
-        full_cur_model->set(adjacent[1].row + offset.row, adjacent[1].col + offset.col, 2);
-      }
-      if (!last) {
-        vector<ArrayCoordinate> temp;
-        temp.push_back(point1);
-        dam_polygon.push_back(temp);
-      }
-      double height =
-          reservoir->elevation + reservoir->dam_height - average_height;
-      double length = find_distance(point1, point2) * 1000;
-      reservoir->dam_volume += convert_to_dam_volume(height, length);
-      reservoir->dam_length += length;
-      dam_polygon[dam_polygon.size() - 1].push_back(point2);
-      last = true;
-    } else {
-      is_turkeys_nest = false;
-      polygon_bool.push_back(false);
-      last = false;
-    }
-  }
-
-  //full_cur_model->write("out2.tif", GDT_Byte);
-  if (polygon_bool[0] && polygon_bool[dam_polygon.size() - 1] &&
-      !is_turkeys_nest && dam_polygon.size() > 1) {
-    for (uint i = 0; i < dam_polygon[dam_polygon.size() - 1].size(); i++) {
-      dam_polygon[0].push_back(dam_polygon[dam_polygon.size() - 1][i]);
-    }
-    dam_polygon.pop_back();
-  }
-
-  for (uint i = 0; i < dam_polygon.size(); i++) {
-    ArrayCoordinate *adjacent = get_adjacent_cells(dam_polygon[i][0], dam_polygon[i][1]);
-    ArrayCoordinate to_check = adjacent[1];
-    if (full_cur_model->get(adjacent[0].row + offset.row, adjacent[0].col + offset.col) == 2)
-      to_check = adjacent[0];
-    vector<GeographicCoordinate> polygon;
-    polygon = compress_poly(
-        corner_cut_poly(convert_poly(convert_to_polygon(full_cur_model, offset, to_check, 2))));
-    string polygon_string =
-        str(polygon, reservoir->elevation + reservoir->dam_height + freeboard);
-    coordinates->dam.push_back(polygon_string);
-  }
-
-  reservoir->volume += (reservoir->dam_volume) / 2;
-  reservoir->water_rock = reservoir->volume / reservoir->dam_volume;
-  reservoir->average_water_depth = reservoir->volume / reservoir->area;
+  model_dam_wall(reservoir, coordinates, DEM, reservoir_polygon, full_cur_model, offset);
 
   string polygon_string =
       str(compress_poly(corner_cut_poly(convert_poly(reservoir_polygon))),
           reservoir->elevation + reservoir->dam_height);
   coordinates->reservoir = polygon_string;
-
-  coordinates->is_turkeys_nest = is_turkeys_nest;
 
   queue<ArrayCoordinate> q;
   q.push(reservoir->pour_point);
@@ -567,9 +575,11 @@ bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinate
   return true;
 }
 
-bool model_bulk_pit(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
+bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
                      vector<vector<vector<GeographicCoordinate>>> &countries,
-                     vector<string> &country_names) {
+                     vector<string> &country_names, Model<char> *full_cur_model,
+                     BigModel big_model) {
+  printf("Success 2\n");
   string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation);
   coordinates->reservoir = polygon_string;
   reservoir->reservoir_polygon = reservoir->shape_bound;
@@ -580,6 +590,22 @@ bool model_bulk_pit(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates
           break;
       }
   }
+  printf("Res size: %i %i %i\n", (int)reservoir->shape_bound.size(), reservoir->shape_bound[0].row, reservoir->shape_bound[0].col);
+
+  if (reservoir->turkey){
+    Model<short> *DEM = big_model.DEM;
+    Model<char> *flow_directions = big_model.flow_directions[0];
+
+    ArrayCoordinate offset = convert_coordinates(
+      convert_coordinates(ArrayCoordinate_init(0, 0, flow_directions->get_origin())),
+      DEM->get_origin());
+
+    for (ArrayCoordinate point : reservoir->reservoir_polygon)
+      full_cur_model->set(point.row, point.col, 1);
+    
+    model_dam_wall(reservoir, coordinates, DEM, reservoir->reservoir_polygon, full_cur_model, offset);
+  }
+  printf("Success 3\n");
   
   return true;
 }

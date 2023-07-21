@@ -12,7 +12,7 @@
 #include <gdal/gdal.h>
 #include <climits>
 
-bool debug_output = true;
+bool debug_output = false;
 
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
@@ -904,7 +904,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 			}
 
 			// Model turkey nests around natural depressions
-			/* if ((turkey_depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
+			if ((turkey_depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
 				//printf("Success 8\n");
 				std::vector<ArrayCoordinate> individual_turkey_region;
 
@@ -920,7 +920,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 				turkey.identifier = str(search_config.grid_square) + "_TURKEYD" + str(i);
 
 				bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, false);
-				printf("Success 9\n");
+				//printf("Success 9\n");
 				if(!model_check)
 					continue;
 				else
@@ -930,8 +930,8 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 					for(ArrayCoordinate point : turkey.reservoir_points)
 							turkey_mask_debug->set(point.row, point.col, true);
 
-				printf("Success 10\n");
-			} 	 */		
+				//printf("Success 10\n");
+			}	
 		}
 	}	
 	fclose(csv_file);
@@ -1178,6 +1178,7 @@ int main(int nargs, char **argv) {
 			mkdir(convert_string(file_storage_location+"debug/turkey_depression_mask"),0777);
 			turkey_depression_mask->write(file_storage_location+"debug/turkey_depression_mask/"+str(search_config.grid_square)+"_turkey_depression_mask.tif", GDT_Byte);
 		}
+		delete filter;
 
 		// Model turkey nests
 		turkey_count = model_turkey_reservoirs(turkey_flat_mask, turkey_depression_mask, DEM);
