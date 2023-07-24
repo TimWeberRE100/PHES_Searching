@@ -94,10 +94,10 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   pair->volume = min(pair->upper.volume, pair->lower.volume);
   pair->water_rock =
       1 / ((1 / pair->upper.water_rock) + (1 / pair->lower.water_rock));
-  set_FOM(pair);
+  /* set_FOM(pair);
   if (pair->FOM > max_FOM || pair->category == 'Z') {
     return false;
-  }
+  } */
   //printf("Success 3\n");
   // Check overlap between reservoirs during pit and existing reservoir constructor
   if (pair->upper.brownfield || pair->lower.brownfield || pair->upper.turkey || pair->lower.turkey) {
@@ -128,6 +128,9 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
     pair_kml->point = dtos(average.lon,5)+","+dtos(average.lat,5)+",0";
     pair_kml->line = dtos(convert_coordinates(upper_closest_point).lon,5)+","+dtos(convert_coordinates(upper_closest_point).lat,5)+",0 "+dtos(convert_coordinates(lower_closest_point).lon,5)+","+dtos(convert_coordinates(lower_closest_point).lat,5)+",0";
     //printf("Success 6\n");
+    //cout << pair_kml->point << "\n";
+    //cout << pair_kml->line << "\n";
+    pair->category = 'A'; //DEBUG
 	return true;
 }
 

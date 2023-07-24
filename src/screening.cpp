@@ -12,7 +12,7 @@
 #include <gdal/gdal.h>
 #include <climits>
 
-bool debug_output = false;
+bool debug_output = true;
 
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
@@ -895,9 +895,15 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 						continue;
 					}
 						
-					if(debug_output)
+					if(debug_output){
 						for(ArrayCoordinate point : turkey.reservoir_points)
-							turkey_mask_debug->set(point.row, point.col, true);
+								//turkey_mask_debug->set(point.row, point.col, true);
+								continue;
+						for(GeographicCoordinate point : turkey.polygon){
+							ArrayCoordinate ac = convert_coordinates(point,get_origin(search_config.grid_square,border));
+							turkey_mask_debug->set(ac.row,ac.col,true);
+						}
+					}
 	
 					//printf("Success 7\n");	
 				}				
@@ -926,9 +932,15 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 				else
 				 	res_count++;
 
-				if(debug_output)
+				if(debug_output){
 					for(ArrayCoordinate point : turkey.reservoir_points)
-							turkey_mask_debug->set(point.row, point.col, true);
+							//turkey_mask_debug->set(point.row, point.col, true);
+							continue;
+					for(GeographicCoordinate point : turkey.polygon){
+						ArrayCoordinate ac = convert_coordinates(point,get_origin(search_config.grid_square,border));
+						turkey_mask_debug->set(ac.row,ac.col,true);
+					}
+				}
 
 				//printf("Success 10\n");
 			}	

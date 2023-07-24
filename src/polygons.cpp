@@ -98,6 +98,11 @@ std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_poin
 	std::vector<std::vector<bool>> seen_points(model_rows, std::vector<bool>(model_cols, false));
 	
 	for (const auto& point : polygon_points) {
+		if(seen_points[point.row][point.col] == true && !add_border)
+			continue;
+		else if(!add_border)
+			seen_points[point.row][point.col] = true;	
+
 		for (uint d=0; d<directions.size(); d++) {
 			if (directions[d].row * directions[d].col != 0)
 				continue;	
@@ -107,9 +112,9 @@ std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_poin
 			if(neighbor.row<0 || neighbor.col<0 || neighbor.row>=model_rows || neighbor.col>=model_cols)
 				continue;
 			
-			if(seen_points[neighbor.row][neighbor.col] == true)
+			if(seen_points[neighbor.row][neighbor.col] == true && add_border)
 				continue;
-			else
+			else if(add_border)
 				seen_points[neighbor.row][neighbor.col] = true;	
 			
 			if(std::find(polygon_points.begin(), polygon_points.end(), neighbor) == polygon_points.end()){

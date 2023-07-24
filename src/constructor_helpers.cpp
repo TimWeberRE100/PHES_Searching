@@ -248,7 +248,7 @@ vector<ArrayCoordinate> order_polygon(vector<ArrayCoordinate> unordered_edge_poi
         bool found_path = false;
         for (uint d=0; d<directions.size(); d++) {
             ArrayCoordinate next = ArrayCoordinate_init(last.row+directions[d].row,last.col+directions[d].col, unordered_edge_points[0].origin);
-            
+            //printf("Initial, %i %i Next: %i %i Size: %i %i\n", initial.row, initial.col, next.row, next.col, (int)to_return.size(), (int)unordered_edge_points.size());
             if(std::find(unordered_edge_points.begin(), unordered_edge_points.end(), next) != unordered_edge_points.end()){
                 found_path = true;
                 to_return.push_back(next);
@@ -580,7 +580,7 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model) {
   //printf("Success 2\n");
-  string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation);
+  string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation + reservoir->fill_depth);
   coordinates->reservoir = polygon_string;
   reservoir->reservoir_polygon = reservoir->shape_bound;
 
@@ -600,10 +600,48 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
       convert_coordinates(ArrayCoordinate_init(0, 0, flow_directions->get_origin())),
       DEM->get_origin());
 
-    for (ArrayCoordinate point : reservoir->reservoir_polygon)
-      full_cur_model->set(point.row, point.col, 1);
+    for (ArrayCoordinate point : reservoir->reservoir_polygon) {
+      for (uint d=0; d<directions.size(); d++) {
+        if (directions[d].row * directions[d].col != 0)
+          continue;	
+
+        ArrayCoordinate neighbor = ArrayCoordinate_init(point.row + directions[d].row, point.col + directions[d].col, point.origin);
+        
+        if(std::find(reservoir->reservoir_polygon.begin(), reservoir->reservoir_polygon.end(), neighbor) == reservoir->reservoir_polygon.end()){
+          full_cur_model->set(point.row, point.col, 2);
+          break;
+        } else {
+          full_cur_model->set(point.row, point.col, 1);
+        }
+      }
+    }
+
+    vector<ArrayCoordinate> reservoir_polygon = convert_to_polygon(full_cur_model, offset, reservoir->pour_point, 1);
     
     model_dam_wall(reservoir, coordinates, DEM, reservoir->reservoir_polygon, full_cur_model, offset);
+
+    string polygon_string =
+        str(compress_poly(corner_cut_poly(convert_poly(reservoir_polygon))),
+            reservoir->elevation + reservoir->dam_height);
+    coordinates->reservoir = polygon_string;
+
+    queue<ArrayCoordinate> q;
+    q.push(reservoir->reservoir_polygon[0]);
+    while (!q.empty()) {
+      ArrayCoordinate p = q.front();
+      q.pop();
+      full_cur_model->set(p.row + offset.row, p.col + offset.col, 0);
+      for (uint d = 0; d < directions.size(); d++) {
+        ArrayCoordinate neighbor = {p.row + directions[d].row,
+                                    p.col + directions[d].col, p.origin};
+        if (full_cur_model->get(neighbor.row + offset.row,
+                                neighbor.col + offset.col) != 0) {
+          full_cur_model->set(neighbor.row + offset.row,
+                              neighbor.col + offset.col, 0);
+          q.push(neighbor);
+        }
+      }
+    }
   }
   //printf("Success 3\n");
   
