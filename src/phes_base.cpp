@@ -403,7 +403,7 @@ vector<ExistingReservoir> get_existing_reservoirs(GridSquare grid_square) {
     }
     SHPHandle SHP = SHPOpen(convert_string(filename), "rb");
     DBFHandle DBF = DBFOpen(convert_string(filename), "rb");
-    bool tiled_bluefield = use_tiled_bluefield && SHP->nShapeType == SHPT_POLYGON;
+    bool tiled_bluefield = use_tiled_bluefield && (SHP->nShapeType == SHPT_POLYGON || SHP->nShapeType == SHPT_POLYGONZ);
     bool tiled_river = use_tiled_rivers && SHP->nShapeType == SHPT_ARC;
     bool csv_names = !tiled_bluefield && !tiled_river;
     int dbf_field = 0, dbf_name_field = 0, dbf_elevation_field = 0;
