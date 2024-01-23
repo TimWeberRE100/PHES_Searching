@@ -44,8 +44,10 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
     int dbf_field = 0;
     int dbf_name_field = 0;
     int dbf_elevation_field = 0;
-    if (type == "RIVER")
+    if (type == "RIVER"){
       dbf_field = DBFGetFieldIndex(DBF, string("DIS_AV_CMS").c_str());
+      dbf_name_field = DBFGetFieldIndex(DBF, string("River_name").c_str());
+    }
     if (type == "BLUEFIELD"){
       dbf_field = DBFGetFieldIndex(DBF, string("Vol_total").c_str());
       dbf_elevation_field = DBFGetFieldIndex(DBF, string("Elevation").c_str());
@@ -84,8 +86,10 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
                   to_keep->set(lat + 90, lon + 180, false);
                 }
             Shape shape = Shape(temp_poly);
-            if (type == "RIVER")
+            if (type == "RIVER"){
               shape.volume = flow;
+              shape.name = string(DBFReadStringAttribute(DBF, i, dbf_name_field));
+            }
             if(type=="BLUEFIELD"){
               shape.volume = volume;
               shape.elevation =DBFReadIntegerAttribute(DBF, i, dbf_elevation_field);
@@ -110,8 +114,10 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
               to_keep->set(lat + 90, lon + 180, false);
             }
         Shape shape = Shape(temp_poly);
-        if (type == "RIVER")
+        if (type == "RIVER"){
           shape.volume = flow;
+          shape.name = string(DBFReadStringAttribute(DBF, i, dbf_name_field));
+        }
         if(type=="BLUEFIELD"){
           shape.volume = volume;
           shape.elevation =DBFReadIntegerAttribute(DBF, i, dbf_elevation_field);
@@ -226,6 +232,7 @@ int main(int argc, char *argv[]) {
       int field_num=0, elevation_field_num=0, name_field_num =0;
       if(type=="RIVER")
         field_num = DBFAddField(DBF, convert_string("DIS_AV_CMS"), FTDouble, 10, 3);
+        name_field_num = DBFAddField(DBF, convert_string("River_name"), FTString, 64, 0);
       if(type=="BLUEFIELD"){
         field_num = DBFAddField(DBF, convert_string("Vol_total"), FTDouble, 10, 3);
         elevation_field_num = DBFAddField(DBF, convert_string("Elevation"), FTInteger, 10, 0);
@@ -257,8 +264,10 @@ int main(int argc, char *argv[]) {
                       padfZ, padfM);
 
         int shp_num = SHPWriteObject(SHP, -1, psObject);
-        if(type=="RIVER")
+        if(type=="RIVER"){
           DBFWriteDoubleAttribute(DBF, shp_num, field_num, shape.volume);
+          DBFWriteStringAttribute(DBF, shp_num, name_field_num, shape.name.c_str());
+        }
         if(type=="BLUEFIELD"){
           DBFWriteDoubleAttribute(DBF, shp_num, field_num, shape.volume);
           DBFWriteIntegerAttribute(DBF, shp_num, elevation_field_num, shape.elevation);
