@@ -40,7 +40,8 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
                 bool *non_overlap, int max_FOM, BigModel big_model,
                 Model<char> *full_cur_model,
                 vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
-                vector<string> &country_names, vector<vector<GeographicCoordinate>> &seen_polygons) {
+                vector<string> &country_names, vector<vector<GeographicCoordinate>> &seen_polygons,
+                vector<string> &seen_ids) {
 
   vector<ArrayCoordinate> used_points;
   *non_overlap = true;
@@ -105,7 +106,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   }
   
   // Check overlap between reservoirs during pit and existing reservoir constructor
-  if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.river && !pair->lower.river) {
+  if (pair->upper.pit || pair->lower.pit) {
     *non_overlap = true;
 
     // Overlap between upper and lower reservoirs, and overlap with other sites
@@ -133,6 +134,34 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
 
     if(pair->lower.pit)
       seen_polygons.push_back(compress_poly(corner_cut_poly(convert_poly(pair->lower.reservoir_polygon))));
+  }
+
+  if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.pit && !pair->lower.pit){
+    *non_overlap = true;
+
+    for (std::string id : seen_ids) {
+      if (pair->upper.brownfield) {
+        if (pair->upper.identifier==id) {
+          *non_overlap = false;
+          break;
+        }
+      }
+
+      if (pair->lower.brownfield) {
+        if (pair->lower.identifier==id) {
+          *non_overlap = false;
+          break;
+        }
+      }
+    }
+
+    if (pair->lower.brownfield) {
+      seen_ids.push_back(pair->lower.identifier);
+    }
+
+    if (pair->upper.brownfield) {
+      seen_ids.push_back(pair->upper.identifier);
+    }
   }
   // REMOVE OVERLAPPING RIVER SITES - ONLY 1 SITE PER RIVER. PERHAPS GO BY RIVER ID? HOW TO MANAGE BETWEEN DIFFERENT GRID SQUARES?
 
@@ -226,6 +255,7 @@ int main(int nargs, char **argv)
     Model<char>* full_cur_model = new Model<char>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);
     full_cur_model->set_geodata(big_model.DEM->get_geodata());
     vector<vector<GeographicCoordinate>> seen_polygons;
+    vector<string> seen_ids;
 
     int total_count = 0;
     int total_capacity = 0;
@@ -264,7 +294,7 @@ int main(int nargs, char **argv)
             bool non_overlap;
             int max_FOM = category_cutoffs[0].storage_cost*tests[i].storage_time+category_cutoffs[0].power_cost;
 
-            if(model_pair(&pairs[i][j], &pair_kml, seen, &non_overlap, max_FOM, big_model, full_cur_model, countries, country_names, seen_polygons)){
+            if(model_pair(&pairs[i][j], &pair_kml, seen, &non_overlap, max_FOM, big_model, full_cur_model, countries, country_names, seen_polygons, seen_ids)){
                 write_pair_csv(csv_file_classes, &pairs[i][j], false);
                 write_pair_csv(csv_file_FOM, &pairs[i][j], true);
                 keep_lower = !lowers.contains(pairs[i][j].lower.identifier);

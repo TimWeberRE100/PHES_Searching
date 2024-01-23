@@ -83,7 +83,7 @@ def main(path_to_tasks_file, path_to_final_output_classes, output_path="."):
     """
     tasks_file_path = Path(path_to_tasks_file)
 
-    final_output_classes_path = Path(path_to_final_output_classes) / "final_output_FOM"
+    final_output_classes_path = Path(path_to_final_output_classes) / "final_output_classes"
 
     output_folder = Path(output_path)
     if not output_folder.exists():
@@ -159,7 +159,6 @@ def main(path_to_tasks_file, path_to_final_output_classes, output_path="."):
                 )
                 try:
                     with open(csv_file_name, "r", encoding="utf-8") as f:
-                        print(csv_file_name)
                         f_csv = csv.reader(f)
                         header = next(f_csv)
                         for row in f_csv:
