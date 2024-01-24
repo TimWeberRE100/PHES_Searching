@@ -106,7 +106,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   }
   
   // Check overlap between reservoirs during pit and existing reservoir constructor
-  if (pair->upper.pit || pair->lower.pit) {
+  if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.river && !pair->lower.river) {
     *non_overlap = true;
 
     // Overlap between upper and lower reservoirs, and overlap with other sites
