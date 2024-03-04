@@ -271,37 +271,66 @@ Circle find_minimum_enclosing_circle(std::vector<ArrayCoordinate> &region_points
 	
 }
 
+Circle approximate_pole_of_inaccessibility(vector<ArrayCoordinate> polygon_points) {
+    // Find maximum and minimum rows
+    int max_row = 0;
+    int min_row = INT_MAX;
+    int max_col = 0;
+    int min_col = INT_MAX;
+    for (ArrayCoordinate point : polygon_points){
+        max_row = MAX(max_row,point.row);
+        max_col = MAX(max_col,point.col);
+        min_row = MIN(min_row,point.row);
+        min_col = MIN(min_col,point.col);
+    }
+
+    printf("ROWS %d %d %d %d\n", max_row, max_col, min_row, min_col);
+
+    ArrayCoordinate pole_point = {min_row +(max_row - min_row) / 2, min_col + (max_col - min_col) / 2, polygon_points[0].origin};
+
+    double max_clearance = find_distance(pole_point,{max_row,pole_point.col,polygon_points[0].origin})*1000;
+
+    Circle pole = {pole_point, max_clearance};
+
+    return pole;
+}
 
 bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoordinate> &individual_turkey_region, 
 								Model<short> *DEM, TurkeyCharacteristics &turkey, bool flat_check) {    
     Circle reference_point({-1,-1,get_origin(search_config.grid_square,border)},0);
+    Circle reference_point_debug({-1,-1,get_origin(search_config.grid_square,border)},0);
+
     if (flat_check) {
 		// Find Pole of Inaccesibility - the centre of the maximum inscribed circle for the individual turkey region
-        //printf("seg1\n");
+        printf("seg1\n");
 		reference_point = find_pole_of_inaccessibility(individual_turkey_region);
+        //reference_point_debug = approximate_pole_of_inaccessibility(individual_turkey_region);
+        printf("seg1.0 ACTUAL: %d %d %.2f APPROX: %d %d %.2f\n", reference_point.centre_point.row, reference_point.centre_point.col, reference_point.radius, reference_point_debug.centre_point.row, reference_point_debug.centre_point.col, reference_point_debug.radius);
         
 	} else {
 		// Find minimum enclosing circle for the depression
+        printf("seg1.1\n");
 		reference_point = find_minimum_enclosing_circle(individual_turkey_region);
 	}
 
+    printf("seg1.2 %d %d\n",reference_point.centre_point.row, reference_point.centre_point.col);
     if(!DEM->check_within(reference_point.centre_point.row, reference_point.centre_point.col))
         return false;
-
+    printf("seg1.3\n");
     // Define key attributes
     turkey.centre_point = reference_point.centre_point;
 	turkey.radius = reference_point.radius; // metres
     turkey.min_elevation = DEM->get(turkey.centre_point.row, turkey.centre_point.col);
-    //printf("seg2 %i %i %.2f %i\n", turkey.centre_point.row, turkey.centre_point.col, turkey.radius, turkey.min_elevation);
+    printf("seg2 %i %i %.2f %i\n", turkey.centre_point.row, turkey.centre_point.col, turkey.radius, turkey.min_elevation);
     
     // Calculate turkey nest area
     turkey.area = pi * turkey.radius * turkey.radius / 10000; // m2 to Ha
-
+    printf("seg2.1, %.2f\n", turkey.area);
     // If the turkey's nest is too small, skip modelling
 	if (turkey.area < min_watershed_area){
 		return false;
 	}
-    //printf("seg3, %.2f %.2f\n", turkey.area, turkey.radius);
+    printf("seg3, %.2f %.2f\n", turkey.area, turkey.radius);
 	
     // Define the mask for the turkey nest surrounding the depression
     double cell_width = 1000*find_distance(turkey.centre_point,{turkey.centre_point.row,turkey.centre_point.col+1, turkey.centre_point.origin});
@@ -310,7 +339,7 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
     int minimum_col = turkey.centre_point.col - int(turkey.radius / cell_width + 1);
     int maximum_row = turkey.centre_point.row + int(turkey.radius / cell_height + 1);
     int maximum_col = turkey.centre_point.col + int(turkey.radius / cell_width + 1);
-    //printf("%i %i %i %i, centre: %i %i, ratio: %.2f %.2f\n", minimum_row, maximum_row, minimum_col, maximum_col, turkey.centre_point.row, turkey.centre_point.col,turkey.radius/cell_height,turkey.radius/cell_width);
+    printf("%i %i %i %i, centre: %i %i, ratio: %.2f %.2f\n", minimum_row, maximum_row, minimum_col, maximum_col, turkey.centre_point.row, turkey.centre_point.col,turkey.radius/cell_height,turkey.radius/cell_width);
 
     for (int row = minimum_row; row<maximum_row; row++)
         for (int col = minimum_col; col<maximum_col; col++) {
@@ -327,12 +356,12 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
             }
         }
 
-    //printf("seg4 %i\n", (int)turkey.reservoir_points.size());
+    printf("seg4 %i\n", (int)turkey.reservoir_points.size());
     // Find the dam wall polygon
     turkey.polygon = convert_poly(order_polygon(find_edge(turkey.reservoir_points)));
     //turkey.polygon = convert_poly(find_edge(turkey.reservoir_points));
     //vector<ArrayCoordinate> dam_poly = find_edge(turkey.reservoir_points); // DEBUG
-    //printf("seg5 %i\n", (int)order_polygon(find_edge(turkey.reservoir_points)).size());
+    printf("seg5 %i\n", (int)order_polygon(find_edge(turkey.reservoir_points)).size());
 
     /* for (ArrayCoordinate rpoint : turkey.reservoir_points)
         if(!DEM->check_within(rpoint.row, rpoint.col))
@@ -351,13 +380,13 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
 
     // Calculate turkey's nest reservoir volume, dam volume, and water-to-rock ratio at all test dam heights
     update_turkey_volumes(turkey, DEM);
-    //printf("seg7\n");
+    printf("seg7\n");
     RoughTurkeyReservoir reservoir = turkey_to_rough_reservoir(turkey);
-	//printf("seg8\n");
+	printf("seg8\n");
     write_rough_reservoir_csv(csv_file, &reservoir);
-    //printf("seg8.1\n");
+    printf("seg8.1\n");
 	write_rough_reservoir_data(csv_data_file, &reservoir);
-    //printf("seg9\n");
+    printf("seg9\n");
 
     return true;
 }
