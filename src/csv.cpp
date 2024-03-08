@@ -593,7 +593,8 @@ void write_pair_csv_header(FILE *csv_file, bool output_FOM) {
                            "Lower water to rock ratio",
                            "Lower fill depth (m)",
                            "Lower bottom elevation (m)",
-                           "Lower country"};
+                           "Lower country",
+                           "URL"};
   if (output_FOM)
     header.push_back("Figure of Merit");
   write_to_csv_file(csv_file, header);
@@ -649,7 +650,9 @@ void write_pair_csv(FILE *csv_file, Pair *pair, bool output_FOM) {
            : dtos(pair->lower.water_rock, 1)),
       dtos(pair->lower.fill_depth,1),
       to_string(pair->lower.bottom_elevation),
-      pair->lower.country};
+      pair->lower.country,
+      generate_map_url(pair)
+      };
   if (output_FOM)
     line.push_back(dtos(pair->FOM, 0));
   write_to_csv_file(csv_file, line);
@@ -707,4 +710,108 @@ void read_pit_polygons(std::string filename, vector<Pair> &pairs, GridSquare gs)
   }
 
   return;
+}
+
+std::string url_encode(const std::string &value) {
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex;
+
+    for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+        std::string::value_type c = (*i);
+
+        // Keep alphanumeric and other accepted characters intact
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '+') {
+            escaped << c;
+            continue;
+        }
+
+        // Any other characters are percent-encoded
+        escaped << std::uppercase;
+        escaped << '%' << std::setw(2) << int((unsigned char)c);
+        escaped << std::nouppercase;
+    }
+
+    return escaped.str();
+}
+
+std::string generate_url(const std::string& siteId, double latitude, double longitude, const std::string& atlas_type, const std::string& site_type) {
+    double camera_south = latitude - 0.03;
+    double camera_north = latitude + 0.03;
+    double camera_east = longitude + 0.03;
+    double camera_west = longitude - 0.03;
+
+    std::string baseUrl = "https://re100.anu.edu.au/#start=";
+
+    // Constructing JSON-like structure as a string
+    std::string jsonStructure = "{"
+        "\"version\":\"8.0.0\","
+        "\"initSources\":[{"
+            "\"stratum\":\"user\","
+            "\"models\":{"
+                "\""+atlas_type+"\":{\"isOpen\":true,\"knownContainerUniqueIds\":[\"/\"],\"type\":\"group\"},"
+                "\""+site_type+"\":{\"knownContainerUniqueIds\":[\""+atlas_type+"\"],\"type\":\"wms\"},"
+                "\"/\":{\"type\":\"group\"}"
+            "},"
+            "\"workbench\":[\""+site_type+"\"],"
+            "\"timeline\":[\""+site_type+"\"],"
+            "\"initialCamera\":{\"west\":"+dtos(camera_west,14)+",\"south\":"+dtos(camera_south,14)+",\"east\":"+dtos(camera_east,14)+",\"north\":"+dtos(camera_north,14)+"},"
+            "\"homeCamera\":{\"west\":109,\"south\":-45,\"east\":158,\"north\":-8},"
+            "\"viewerMode\":\"2d\","
+            "\"showSplitter\":false,"
+            "\"splitPosition\":0.5,"
+            "\"settings\":{"
+                "\"baseMaximumScreenSpaceError\":2,"
+                "\"useNativeResolution\":false,"
+                "\"alwaysShowTimeline\":false,"
+                "\"baseMapId\":\"basemap-bing-aerial-with-labels\","
+                "\"terrainSplitDirection\":0,"
+                "\"depthTestAgainstTerrainEnabled\":false"
+            "}"
+            /* "\"pickedFeatures\":{"
+                "\"providerCoords\":{\"https://re100.anu.edu.au/geoserver/global_greenfield/wms\":{\"x\":14063,\"y\":6169,\"level\":14}},"
+                "\"pickCoords\":{\"lat\":"+dtos(latitude,14)+",\"lng\":"+dtos(longitude,14)+",\"height\":0},"
+                "\"current\":{\"name\":\""+siteId+"\",\"hash\":19486325717},"
+                "\"entities\":[]"
+            "}" */
+        "}]"
+    "}";
+
+    // URL-encode the JSON structure and append it to the base URL
+    std::string encodedJson = url_encode(jsonStructure);
+    std::string generatedUrl = baseUrl + encodedJson;
+
+    std::cout << generatedUrl << "\n";
+
+    return generatedUrl;
+}
+
+std::string generate_map_url(Pair *pair){
+  //std::string latitude = dtos(pair->upper.latitude, 5);
+  //std::string longitude = dtos(pair->upper.longitude, 5);
+
+  std::string atlas_type;
+  if ((pair->upper.brownfield|| pair->lower.brownfield) && (!pair->upper.pit || !pair->lower.pit) && (!pair->upper.river || !pair->lower.river)){
+    atlas_type = convert_string("Global Bluefield");
+  } else if (pair->upper.pit || pair->lower.pit){
+    atlas_type = convert_string("Global Brownfield");
+  } else if (pair->upper.river || pair->lower.river){
+    atlas_type = convert_string("Global Seasonal");
+  } else if (pair->lower.ocean){
+    atlas_type = convert_string("Global Ocean");
+  } else {
+    atlas_type = convert_string("Global Greenfield");
+  }
+
+  std::string url_pair_id = pair->identifier;
+  std::replace(url_pair_id.begin(), url_pair_id.end(), ' ', '+');
+
+  std::string storage_time = to_string(pair->storage_time);
+  std::string energy_capacity = energy_capacity_to_string(pair->energy_capacity);
+  
+  std::string atlas = convert_string(atlas_type + " " + energy_capacity + "GWh " + storage_time + "h");
+
+  std::string url = generate_url(url_pair_id, pair->upper.latitude, pair->upper.longitude, convert_string("Brownfield"), convert_string("Global Brownfield 2GWh 6h"));
+  std::cout << pair->identifier << "\n";
+  return url;
 }

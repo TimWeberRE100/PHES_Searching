@@ -92,7 +92,7 @@ upper_colour = #88F0AA14;
 lower_colour = #88F03C14;
 
 // Reservoir sizings
-//test = 5000, 2000;      // Seasonal storage connected to rivers only
+test = 5000, 2000;      
 test = 1500, 504;				// Test in format {Volume (GL), Storage time (h)}
 test = 500, 168;
 test = 150, 50;
@@ -102,6 +102,8 @@ test = 5, 18;
 test = 2, 6;
 
 // Class Cutoffs
+AAA = 176, 16;
+AA = 357, 32;
 A = 533, 47;						// Class cutoffs in the format {Power Cost, Storage Cost}
 B = 666, 59;
 C = 800, 70;
