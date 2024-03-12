@@ -568,3 +568,20 @@ RoughBfieldReservoir pit_to_rough_reservoir(BulkPit pit, GeographicCoordinate lo
     	reservoir.shape_bound.push_back(convert_coordinates(c, origin));
 	return reservoir;
 }
+
+std::string get_class(char category){
+	std::string to_return = "Z";
+	
+	if (category >= 'A'){
+		to_return = category;
+	} else if (category == '@') {
+		to_return = "AA";
+	} else if (category == '?'){
+		to_return = "AAA";
+	} else {
+		printf("Unknown cost class.");
+		exit(1);
+	}
+
+	return to_return;
+}

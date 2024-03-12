@@ -77,7 +77,7 @@ string get_html(Reservoir* reservoir, Pair* pair){
 "              <tr><td>"+newline+
 "              <table style=\"font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px\">"+newline+
 //"              <tr><td>Reservoir Ref.</td><td>"+reservoir->identifier+"</td></tr>"+newline+
-(pair != NULL ? "              <tr><td>Class</td><td>"+string(1,pair->category)+"</td></tr>"+newline : "")+
+(pair != NULL ? "              <tr><td>Class</td><td>"+get_class(pair->category)+"</td></tr>"+newline : "")+
 "              <tr bgcolor=\"#D4E4F3\"><td>Elevation (m)</td><td>"+to_string(reservoir->elevation)+"</td></tr>"+newline+
 "              <tr><td>Latitude</td><td>"+dtos(reservoir->latitude,4)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Longitude</td><td>"+dtos(reservoir->longitude,4)+"</td></tr>"+newline+
@@ -103,7 +103,7 @@ string get_html(Pair* pair){
 "              <td>"+pair->identifier+"</td></tr>"+newline+
 "              <tr><td>"+newline+
 "              <table style=\"font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px\">"+newline+
-"              <tr><td>Class</td><td>"+string(1,pair->category)+"</td></tr>"+newline+
+"              <tr><td>Class</td><td>"+get_class(pair->category)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Head (m)</td><td>"+to_string(pair->head)+"</td></tr>"+newline+
 "              <tr><td>Separation (km)</td><td>"+dtos(pair->distance,1)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Average Slope (%)</td><td>"+dtos(pair->slope*100,0)+"</td></tr>"+newline+
@@ -229,7 +229,7 @@ string get_attributes(Pair* pair){
 // "            <value>"+pair->identifier+"</value>\n"
 // "          </Data>\n"
 "          <Data name=\"Class\">\n"
-"            <value>"+string(1,pair->category)+"</value>\n"
+"            <value>"+get_class(pair->category)+"</value>\n"
 "          </Data>\n"
 // "          <Data name=\"Head (m)\">\n"
 // "            <value>"+to_string(pair->head)+"</value>\n"
@@ -372,10 +372,30 @@ string hex(int c){
 }
 
 string get_colour(char category){
-	int opacity = convert_to_int(good_colour[0]+(((category-'A')/4.0)*(bad_colour[0]-good_colour[0])));
-	int blue = convert_to_int(good_colour[1]+(((category-'A')/4.0)*(bad_colour[1]-good_colour[1])));
-	int green = convert_to_int(good_colour[2]+(((category-'A')/4.0)*(bad_colour[2]-good_colour[2])));
-	int red = convert_to_int(good_colour[3]+(((category-'A')/4.0)*(bad_colour[3]-good_colour[3])));
+	int opacity = 0;
+	int blue = 0;
+	int green = 0;
+	int red = 0;
+
+	if (category >= 'A'){
+		opacity = convert_to_int(good_colour[0]+(((category-'A')/4.0)*(bad_colour[0]-good_colour[0])));
+		blue = convert_to_int(good_colour[1]+(((category-'A')/4.0)*(bad_colour[1]-good_colour[1])));
+		green = convert_to_int(good_colour[2]+(((category-'A')/4.0)*(bad_colour[2]-good_colour[2])));
+		red = convert_to_int(good_colour[3]+(((category-'A')/4.0)*(bad_colour[3]-good_colour[3])));
+	} else if (category == '@') {
+		opacity = premium_colour_aa[0];
+		blue = premium_colour_aa[1];
+		green = premium_colour_aa[2];
+		red = premium_colour_aa[3];
+	} else if (category == '?'){
+		opacity = premium_colour_aaa[0];
+		blue = premium_colour_aaa[1];
+		green = premium_colour_aaa[2];
+		red = premium_colour_aaa[3];
+	} else {
+		printf("Unknown cost class.");
+		exit(1);
+	}
 	string to_return = hex(opacity)+hex(blue)+hex(green)+hex(red);
 	return to_return;
 }
@@ -383,8 +403,25 @@ string get_colour(char category){
 string get_scale(char category){
 	for(CategoryCutoff category_cutoff:category_cutoffs)
 		if(category==category_cutoff.category)
-			return dtos(1.25-((category-'A')/8.0),3);
+			return dtos(1.25-((category-'?')/12.0),3);
 	return "0";
+}
+
+std::string get_paddle(char category) {
+	std::string to_return;
+
+	if (category >= 'A'){
+		to_return = get_class(category);
+	} else if (category == '@') {
+		to_return = "red-diamond";
+	} else if (category == '?'){
+		to_return = "red-stars";
+	} else {
+		printf("Unknown cost class.");
+		exit(1);
+	}
+
+	return to_return;
 }
 
 string get_point_kml(Pair* pair, string coordinates){
@@ -396,7 +433,7 @@ string get_point_kml(Pair* pair, string coordinates){
 "          <IconStyle>\n"
 "            <scale>"+get_scale(pair->category)+"</scale>\n"
 "            <color>"+get_colour(pair->category)+"</color>\n"
-"            <Icon><href>http://maps.google.com/mapfiles/kml/paddle/"+pair->category+".png</href></Icon>\n"
+"            <Icon><href>http://maps.google.com/mapfiles/kml/paddle/"+get_paddle(pair->category)+".png</href></Icon>\n"
 "          </IconStyle>\n"
 "        </Style>\n"
 			+get_attributes(pair)

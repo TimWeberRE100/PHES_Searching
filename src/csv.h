@@ -34,7 +34,6 @@ void write_summary_csv(FILE *csv_file, string square_name, string test,
                       int energy_capacity);
 void read_pit_polygons(std::string filename, std::vector<Pair> &pairs, GridSquare gs);
 std::string generate_map_url(Pair *pair);
-std::string generate_url(const std::string& siteId, double latitude, double longitude, const std::string& siteType);
 std::string url_encode(const std::string &value);
 
 #endif

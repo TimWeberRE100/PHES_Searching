@@ -105,6 +105,8 @@ extern int max_wall_height;
 // Output
 extern int good_colour[4];
 extern int bad_colour[4];
+extern int premium_colour_aa[4];
+extern int premium_colour_aaa[4];
 extern string upper_colour;
 extern string lower_colour;
 extern double volume_accuracy;            // Maximum ratio error on final volume
@@ -230,5 +232,6 @@ RoughBfieldReservoir existing_reservoir_to_rough_reservoir(ExistingReservoir r);
 vector<ExistingPit> get_pit_details(GridSquare grid_square);
 ExistingPit get_pit_details(string pitname);
 RoughBfieldReservoir pit_to_rough_reservoir(BulkPit pit, GeographicCoordinate lowest_point);
+std::string get_class(char category);
 
 #endif

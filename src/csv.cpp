@@ -603,7 +603,7 @@ void write_pair_csv_header(FILE *csv_file, bool output_FOM) {
 void write_pair_csv(FILE *csv_file, Pair *pair, bool output_FOM) {
   vector<string> line = {
       pair->identifier,
-      string(1, pair->category),
+      get_class(pair->category),
       to_string(pair->head),
       dtos(pair->distance, 2),
       dtos(pair->slope * 100, 0),
@@ -735,16 +735,34 @@ std::string url_encode(const std::string &value) {
     return escaped.str();
 }
 
-std::string generate_url(const std::string& siteId, double latitude, double longitude, const std::string& atlas_type, const std::string& site_type) {
-    double camera_south = latitude - 0.03;
-    double camera_north = latitude + 0.03;
-    double camera_east = longitude + 0.03;
-    double camera_west = longitude - 0.03;
+std::string generate_map_url(Pair* pair) {
+    std::string atlas_type;    
+    if ((pair->upper.brownfield|| pair->lower.brownfield) && (!pair->upper.pit || !pair->lower.pit) && (!pair->upper.river || !pair->lower.river)){
+      atlas_type = convert_string("Bluefield");
+    } else if (pair->upper.pit || pair->lower.pit){
+      atlas_type = convert_string("Brownfield");
+    } else if (pair->upper.river || pair->lower.river){
+      atlas_type = convert_string("Seasonal");
+    } else if (pair->lower.ocean){
+      atlas_type = convert_string("Ocean");
+    } else {
+      atlas_type = convert_string("Greenfield");
+    }
 
-    std::string baseUrl = "https://re100.anu.edu.au/#start=";
+    std::string storage_time = to_string(pair->storage_time);
+    std::string energy_capacity = energy_capacity_to_string(pair->energy_capacity);
+    
+    std::string site_type = convert_string("Global_" + atlas_type + "_" + energy_capacity + "GWh_" + storage_time + "h");
+
+    double camera_south = (pair->upper.latitude + pair->lower.latitude)/2 - 0.03;
+    double camera_north = (pair->upper.latitude + pair->lower.latitude)/2 + 0.03;
+    double camera_east = (pair->upper.longitude + pair->lower.longitude)/2 + 0.03;
+    double camera_west = (pair->upper.longitude + pair->lower.longitude)/2 - 0.03;
+
+    std::string base_url = "https://re100.anu.edu.au/#start=";
 
     // Constructing JSON-like structure as a string
-    std::string jsonStructure = "{"
+    std::string json_structure = "{"
         "\"version\":\"8.0.0\","
         "\"initSources\":[{"
             "\"stratum\":\"user\","
@@ -777,41 +795,10 @@ std::string generate_url(const std::string& siteId, double latitude, double long
         "}]"
     "}";
 
-    // URL-encode the JSON structure and append it to the base URL
-    std::string encodedJson = url_encode(jsonStructure);
-    std::string generatedUrl = baseUrl + encodedJson;
+    std::string encoded_json = url_encode(json_structure);
+    std::string generated_url = base_url + encoded_json;
 
-    std::cout << generatedUrl << "\n";
+    //std::cout << generatedUrl << "\n";
 
-    return generatedUrl;
-}
-
-std::string generate_map_url(Pair *pair){
-  //std::string latitude = dtos(pair->upper.latitude, 5);
-  //std::string longitude = dtos(pair->upper.longitude, 5);
-
-  std::string atlas_type;
-  if ((pair->upper.brownfield|| pair->lower.brownfield) && (!pair->upper.pit || !pair->lower.pit) && (!pair->upper.river || !pair->lower.river)){
-    atlas_type = convert_string("Global Bluefield");
-  } else if (pair->upper.pit || pair->lower.pit){
-    atlas_type = convert_string("Global Brownfield");
-  } else if (pair->upper.river || pair->lower.river){
-    atlas_type = convert_string("Global Seasonal");
-  } else if (pair->lower.ocean){
-    atlas_type = convert_string("Global Ocean");
-  } else {
-    atlas_type = convert_string("Global Greenfield");
-  }
-
-  std::string url_pair_id = pair->identifier;
-  std::replace(url_pair_id.begin(), url_pair_id.end(), ' ', '+');
-
-  std::string storage_time = to_string(pair->storage_time);
-  std::string energy_capacity = energy_capacity_to_string(pair->energy_capacity);
-  
-  std::string atlas = convert_string(atlas_type + " " + energy_capacity + "GWh " + storage_time + "h");
-
-  std::string url = generate_url(url_pair_id, pair->upper.latitude, pair->upper.longitude, convert_string("Brownfield"), convert_string("Global Brownfield 2GWh 6h"));
-  std::cout << pair->identifier << "\n";
-  return url;
+    return generated_url;
 }

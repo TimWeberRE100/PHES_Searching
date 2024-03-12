@@ -88,22 +88,24 @@ dam_wall_height_resolution = 0.5;	// Resolution of dam wall height (m)
 minimum_dam_height = 5.0;
 good_colour = 255, 0, 0, 255; 		// Opacity, Blue, Green, Red
 bad_colour = 255, 200, 200, 255;
+premium_colour_aa = 255, 90, 0, 133
+premium_colour_aaa = 255, 107, 0, 84
 upper_colour = #88F0AA14;
 lower_colour = #88F03C14;
 
 // Reservoir sizings
-test = 5000, 2000;      
-test = 1500, 504;				// Test in format {Volume (GL), Storage time (h)}
-test = 500, 168;
+test = 5000, 200;      
+test = 1500, 60;				// Test in format {Volume (GL), Storage time (h)}
+test = 500, 50;
 test = 150, 50;
-test = 50, 50;
+test = 50, 18;
 test = 15, 18;
 test = 5, 18;
-test = 2, 6;
+test = 2, 6; 
 
 // Class Cutoffs
-AAA = 176, 16;
-AA = 357, 32;
+? = 176, 16;                        // Premium class AAA
+@ = 357, 32;                        // Premium class AA
 A = 533, 47;						// Class cutoffs in the format {Power Cost, Storage Cost}
 B = 666, 59;
 C = 800, 70;

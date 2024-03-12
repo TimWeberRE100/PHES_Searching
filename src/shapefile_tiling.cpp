@@ -230,9 +230,10 @@ int main(int argc, char *argv[]) {
       }		
       
       int field_num=0, elevation_field_num=0, name_field_num =0;
-      if(type=="RIVER")
+      if(type=="RIVER"){
         field_num = DBFAddField(DBF, convert_string("DIS_AV_CMS"), FTDouble, 10, 3);
         name_field_num = DBFAddField(DBF, convert_string("River_name"), FTString, 64, 0);
+      }
       if(type=="BLUEFIELD"){
         field_num = DBFAddField(DBF, convert_string("Vol_total"), FTDouble, 10, 3);
         elevation_field_num = DBFAddField(DBF, convert_string("Elevation"), FTInteger, 10, 0);
