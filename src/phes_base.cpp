@@ -208,11 +208,11 @@ BigModel BigModel_init(GridSquare sc){
 }
 
 double calculate_power_house_cost(double power, double head){
-	return powerhouse_coeff*pow(MIN(power,800),(power_exp))/pow(head,head_exp);
+	return powerhouse_coeff*pow(power,(power_exp))/pow(head,head_exp);
 }
 
 double calculate_tunnel_cost(double power, double head, double seperation){
-	return ((power_slope_factor*MIN(power,800)+slope_int)*pow(head,head_coeff)*seperation*1000)+(power_offset*MIN(power,800)+tunnel_fixed);
+	return ((power_slope_factor*power+slope_int)*pow(head,head_coeff)*seperation*1000)+(power_offset*power+tunnel_fixed);
 }
 
 void set_FOM(Pair* pair){
@@ -225,23 +225,27 @@ void set_FOM(Pair* pair){
 	double power_house_cost;
 	if (head > 800) {
 		power_house_cost = 2*calculate_power_house_cost(power/2, head/2);
-		tunnel_cost = 2*calculate_tunnel_cost(power/2, head/2, seperation);
-		power_cost = 0.001*(power_house_cost+tunnel_cost)/MIN(power, 800);
+		tunnel_cost = 2*calculate_tunnel_cost(power/2, head/2, seperation/2);
+		power_cost = 0.001*(power_house_cost+tunnel_cost)/power;
 	}
 	else {
 		power_house_cost = calculate_power_house_cost(power, head);
 		tunnel_cost = calculate_tunnel_cost(power, head, seperation);
-		power_cost = 0.001*(power_house_cost+tunnel_cost)/MIN(power, 800);
-		if(pair->lower.ocean){
+		power_cost = 0.001*(power_house_cost+tunnel_cost)/power;
+	}
+
+	if(pair->lower.ocean){
 			double total_lining_cost = lining_cost*pair->upper.area*meters_per_hectare;
 			power_house_cost = power_house_cost*sea_power_scaling;
 			double marine_outlet_cost = ref_marine_cost*power*ref_head/(ref_power*head);
-			power_cost = 0.001*((power_house_cost+tunnel_cost)/MIN(power, 800) + marine_outlet_cost/power);
+			power_cost = 0.001*((power_house_cost+tunnel_cost)/power + marine_outlet_cost/power);
 			energy_cost += 0.000001*total_lining_cost/pair->energy_capacity;
 		}
-	}
 
 	pair->FOM = power_cost+energy_cost*pair->storage_time;
+
+	//std::cout << head << " " << power << " " << power_house_cost << " " << tunnel_cost << " " << power_cost << " " << energy_cost << " " << energy_cost*pair->storage_time << " " << pair->FOM << "\n";
+
 	pair->category = 'Z';
 	uint i = 0;
 	while(i<category_cutoffs.size() && pair->FOM<category_cutoffs[i].power_cost+pair->storage_time*category_cutoffs[i].storage_cost){
