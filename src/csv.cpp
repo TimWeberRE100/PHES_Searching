@@ -231,6 +231,13 @@ void write_rough_reservoir_data(FILE *csv_file, RoughReservoir *reservoir) {
       for(int e : br->elevations)
         line.push_back(to_string(e));
   }
+  if(RoughTurkeyReservoir* br = dynamic_cast<RoughTurkeyReservoir*>(reservoir)){
+    line.push_back(to_string(br->shape_bound.size()));
+    for(ArrayCoordinate c : br->shape_bound){
+      line.push_back(to_string(c.row));
+      line.push_back(to_string(c.col));
+    }
+  }
   write_to_csv_file(csv_file, line);
 }
 
@@ -287,6 +294,9 @@ vector<unique_ptr<RoughReservoir>> read_rough_reservoir_data(char *filename) {
       reservoir->ocean =
           stoi(line[6 + 4 * dam_wall_heights.size() +
                     (dam_wall_heights.size() * directions.size()) * 2 + 1]) > 0;
+      reservoir->turkey =
+          stoi(line[6 + 4 * dam_wall_heights.size() + 
+                    (dam_wall_heights.size() * directions.size()) * 2 + 2]) > 0;
     }
     for (uint i = 0; i < dam_wall_heights.size(); i++)
       if(reservoir->river)
@@ -302,7 +312,7 @@ vector<unique_ptr<RoughReservoir>> read_rough_reservoir_data(char *filename) {
     reservoir->watershed_area = stod(line[5]);
     reservoir->identifier = line[0];
     
-    if(!compressed_format || (!reservoir->ocean && !reservoir->brownfield)){
+    if(!compressed_format || (!reservoir->ocean && !reservoir->brownfield && !reservoir->turkey)){
       unique_ptr<RoughGreenfieldReservoir> greenfield_reservoir(new RoughGreenfieldReservoir(*reservoir));
       for (uint ih = 0; ih < dam_wall_heights.size(); ih++) {
         for (uint idir = 0; idir < directions.size(); idir++) {
@@ -327,6 +337,13 @@ vector<unique_ptr<RoughReservoir>> read_rough_reservoir_data(char *filename) {
           bfield_reservoir->elevations.push_back(stoi(line[10+4*dam_wall_heights.size()+2*point_len+i]));
         }
       reservoirs.push_back(std::move(bfield_reservoir));
+    } else if(reservoir->turkey){
+      int point_len = stoi(line[9+4*dam_wall_heights.size()]);
+      unique_ptr<RoughTurkeyReservoir> turkey_reservoir(new RoughTurkeyReservoir(*reservoir));
+      for(int i = 0; i<point_len; i++){
+        turkey_reservoir->shape_bound.push_back(ArrayCoordinate_init(stoi(line[10+4*dam_wall_heights.size()+i*2]), stoi(line[10+4*dam_wall_heights.size()+i*2+1]), origin));
+      }
+      reservoirs.push_back(std::move(turkey_reservoir));
     }
   }
   if (header) {
@@ -382,6 +399,7 @@ void write_rough_pair_data_header(FILE *csv_file) {
                            "Upper fill depth (m)",
                            "Upper bottom elevation (m)",
                            "Upper Brownfield",
+                           "Upper Turkey",
                            "Lower Identifier",
                            "Lower latitude",
                            "Lower longitude",
@@ -394,6 +412,7 @@ void write_rough_pair_data_header(FILE *csv_file) {
                            "Lower bottom elevation (m)",
                            "Lower Brownfield",
                            "Lower Ocean",
+                           "Lower Turkey",
                            "Head (m)",
                            "Pourpoint separation (km)",
                            "Separation (km)",
@@ -439,6 +458,7 @@ void write_rough_pair_csv(FILE *csv_file, Pair *pair) {
 }
 
 void write_rough_pair_data(FILE *csv_file, Pair *pair) {
+  //printf("Turkeys %i %i\n", pair->upper.turkey, pair->lower.turkey);
   vector<string> line = {
       pair->identifier,
       pair->upper.identifier,
@@ -452,6 +472,7 @@ void write_rough_pair_data(FILE *csv_file, Pair *pair) {
       dtos(pair->upper.fill_depth, 3),
       to_string(pair->upper.bottom_elevation),
       pair->upper.river ? "3" : (pair->upper.pit ? "2" : to_string(pair->upper.brownfield)),
+      to_string(pair->upper.turkey),
       pair->lower.identifier,
       dtos(pair->lower.latitude, 6),
       dtos(pair->lower.longitude, 6),
@@ -464,6 +485,7 @@ void write_rough_pair_data(FILE *csv_file, Pair *pair) {
       to_string(pair->lower.bottom_elevation),
       pair->lower.river ? "3" : (pair->lower.pit ? "2" : to_string(pair->lower.brownfield)),
       to_string(pair->lower.ocean),
+      to_string(pair->lower.turkey),
       to_string(pair->head),
       dtos(pair->pp_distance, 5),
       dtos(pair->distance, 5),
@@ -500,12 +522,11 @@ vector<vector<Pair>> read_rough_pair_data(char *filename) {
                                    convert_to_int(FLOOR(gc.lon + EPS))),
                    border);
     pair.upper = Reservoir_init(convert_coordinates(gc, origin), stoi(line[4]), stoi(line[4]));
-    gc = GeographicCoordinate_init(stod(line[13]), stod(line[14]));
+    gc = GeographicCoordinate_init(stod(line[14]), stod(line[15]));
     origin = get_origin(GridSquare_init(convert_to_int(FLOOR(gc.lat + EPS)),
                                         convert_to_int(FLOOR(gc.lon + EPS))),
                         border);
-    pair.lower =
-        Reservoir_init(convert_coordinates(gc, origin), stoi(line[15]), stoi(line[15]));
+    pair.lower = Reservoir_init(convert_coordinates(gc, origin), stoi(line[16]), stoi(line[16]));
 
     pair.identifier = line[0];
 
@@ -519,30 +540,32 @@ vector<vector<Pair>> read_rough_pair_data(char *filename) {
     pair.upper.brownfield = stoi(line[11]) > 0;
     pair.upper.pit = stoi(line[11]) == 2;
     pair.upper.river = stoi(line[11]) == 3;
+    pair.upper.turkey = stoi(line[12] > 0
 
-    pair.lower.identifier = line[12];
-    pair.lower.dam_height = stod(line[16]);
-    pair.lower.max_dam_height = stod(line[17]);
-    pair.lower.water_rock = stod(line[18]);
-    pair.lower.area = stod(line[19]);
-    pair.lower.fill_depth = stod(line[20]);
-    pair.lower.bottom_elevation = stoi(line[21]);
-    pair.lower.brownfield = stoi(line[22]) > 0;
-    pair.lower.pit = stoi(line[22]) == 2;
-    pair.lower.river = stoi(line[22]) == 3;
-    pair.lower.ocean = stoi(line[23]) > 0;
+    pair.lower.identifier = line[13];
+    pair.lower.dam_height = stod(line[17]);
+    pair.lower.max_dam_height = stod(line[18]);
+    pair.lower.water_rock = stod(line[19]);
+    pair.lower.area = stod(line[20]);
+    pair.lower.fill_depth = stod(line[21]);
+    pair.lower.bottom_elevation = stoi(line[22]);
+    pair.lower.brownfield = stoi(line[23]) > 0;
+    pair.lower.pit = stoi(line[23]) == 2;
+    pair.lower.river = stoi(line[23]) == 3;
+    pair.lower.ocean = stoi(line[24]) > 0;
+    pair.lower.turkey = stoi(line[25]) > 0;
 
-    pair.head = stoi(line[24]);
-    pair.pp_distance = stod(line[25]);
-    pair.distance = stod(line[26]);
-    pair.slope = stod(line[27]);
-    pair.required_volume = stod(line[28]);
-    pair.upper.volume = stod(line[28]);
-    pair.lower.volume = stod(line[28]);
-    pair.energy_capacity = stod(line[29]);
-    pair.storage_time = stoi(line[30]);
+    pair.head = stoi(line[26]);
+    pair.pp_distance = stod(line[27]);
+    pair.distance = stod(line[28]);
+    pair.slope = stod(line[29]);
+    pair.required_volume = stod(line[30]);
+    pair.upper.volume = stod(line[30]);
+    pair.lower.volume = stod(line[30]);
+    pair.energy_capacity = stod(line[31]);
+    pair.storage_time = stoi(line[32]);
 
-    pair.FOM = stod(line[31]);
+    pair.FOM = stod(line[33]);
 
     for (uint i = 0; i < tests.size(); i++)
       if (abs(pair.energy_capacity - tests[i].energy_capacity) < EPS &&
@@ -679,6 +702,7 @@ void read_pit_polygons(std::string filename, vector<Pair> &pairs, GridSquare gs)
   ifstream inputFile(filename);
   string s;
   bool header = true;
+  //printf("Success 1\n");
   
   while (getline(inputFile, s)) {
     if (header) {
@@ -688,6 +712,7 @@ void read_pit_polygons(std::string filename, vector<Pair> &pairs, GridSquare gs)
     }
     vector<string> line = read_from_csv_file(s);
     GeographicCoordinate origin = get_origin(gs, border);
+    //printf("ACs %.6f %.6f %i %i\n", origin.lat, origin.lon, gs.lat, gs.lon);
     
     for(Pair &pair : pairs){
       if (pair.upper.identifier == line[0]){

@@ -39,7 +39,10 @@ vector<double> dam_wall_heights; 	//  Wall heights to test and export
 
 int depression_depth_min;			// Minimum depth of depressions (m) for mining pit and turkey's nest screenings
 double pit_lake_relative_depth;  // Pit lakes typically have a relative depth (maximum depth : diameter of circle with surface area) of between 10% - 40%
-double pit_lake_relative_area;    // The ratio of surface area at the bottom of the pit vs the surface of the lake
+
+int max_turkey_area;  // Maximum area (ha) of a turkey nest screening polygon
+int max_turkey_slope;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
+int max_turkey_dam_height; // Maximum height (m) of turkey nest dams
 
 // Pairing
 int min_head;						// Minimum head (m) to be considered a potential pair
@@ -126,8 +129,12 @@ void parse_variables(char* filename){
 				depression_depth_min = stoi(value);
 			if(variable=="pit_lake_relative_depth")
 				pit_lake_relative_depth = stod(value);
-			if(variable=="pit_lake_relative_area")
-				pit_lake_relative_area = stod(value);
+			if(variable=="max_turkey_area")
+				max_turkey_area = stoi(value);
+			if(variable=="max_turkey_slope")
+				max_turkey_slope = stoi(value);
+			if(variable=="max_turkey_dam_height")
+				max_turkey_dam_height = stoi(value);
 			if(variable=="min_watershed_area"){
 				min_watershed_area = stod(value);
 				stream_threshold = (int)(11.1*min_watershed_area);

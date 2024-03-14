@@ -20,14 +20,17 @@ vector<GeographicCoordinate> convert_poly(vector<ArrayCoordinate> polygon);
 vector<GeographicCoordinate> corner_cut_poly(vector<GeographicCoordinate> polygon);
 vector<GeographicCoordinate> compress_poly(vector<GeographicCoordinate> polygon);
 string str(vector<GeographicCoordinate> polygon, double elevation);
+bool model_dam_wall(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
+                     Model<short> *DEM, vector<ArrayCoordinate> reservoir_polygon,
+                     Model<char> *full_cur_model, ArrayCoordinate offset);
 bool model_reservoir(Reservoir *reservoir,
                      Reservoir_KML_Coordinates *coordinates, Model<bool> *seen,
                      bool *non_overlap, vector<ArrayCoordinate> *used_points,
                      BigModel big_model, Model<char> *full_cur_model,
                      vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names);
-bool model_bulk_pit(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
-                     vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
-                     vector<string> &country_names);
-
+bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
+                     vector<vector<vector<GeographicCoordinate>>> &countries,
+                     vector<string> &country_names, Model<char> *full_cur_model,
+                     BigModel big_model);
 #endif

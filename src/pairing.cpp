@@ -12,6 +12,7 @@ vector<GeographicCoordinate> find_points_to_test(RoughReservoir* &reservoir,
                                                  double &wall_height, ArrayCoordinate &pour_point) {
   vector<GeographicCoordinate> bound;
   if (RoughGreenfieldReservoir *gr = dynamic_cast<RoughGreenfieldReservoir *>(reservoir)) {
+    //printf("GF\n");
     array<ArrayCoordinate, directions.size()> one_point = {pour_point, pour_point, pour_point,
                                                            pour_point, pour_point, pour_point,
                                                            pour_point, pour_point};
@@ -33,7 +34,10 @@ vector<GeographicCoordinate> find_points_to_test(RoughReservoir* &reservoir,
                            inv_wall_height_interval});
     }
     bound.push_back(convert_coordinates(pour_point));
-  } else {
+  } else if (RoughTurkeyReservoir *tr = dynamic_cast<RoughTurkeyReservoir *>(reservoir)) {
+    for (ArrayCoordinate c : tr->shape_bound)
+      bound.push_back(convert_coordinates(c));
+  }else {
     RoughBfieldReservoir *br = dynamic_cast<RoughBfieldReservoir *>(reservoir);
     for (ArrayCoordinate c : br->shape_bound)
       bound.push_back(convert_coordinates(c));
@@ -47,9 +51,10 @@ double find_least_distance_sqd(RoughReservoir* upper, RoughReservoir* &lower,
   double mindist2 = INF;
   vector<GeographicCoordinate> upper_points =
       find_points_to_test(upper, upper_wall_height, *upper_pour_point);
+  //printf("Pair 1.2\n");
   vector<GeographicCoordinate> lower_points =
       find_points_to_test(lower, lower_wall_height, *lower_pour_point);
-
+  //printf("Pair 1.1\n");
   for (uint iu = 0; iu < upper_points.size(); iu++) {
     GeographicCoordinate p1 = upper_points[iu];
     for (uint il = 0; il < lower_points.size(); il++) {
@@ -206,18 +211,22 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
                       double energy_capacity, int storage_time, Pair *pair,
                       int max_FOM) {
   int head = upper->elevation - lower->elevation;
+  //printf("Pair 1\n");
   double required_volume = find_required_volume(energy_capacity, head);
   if ((max(upper->volumes) < required_volume) ||
       (max(lower->volumes) < required_volume * (lower->river ? 5 : 1))) {
     return NULL;
   }
   ExistingPit single_pit;
+
   RoughReservoir greenfield = *upper;
   RoughReservoir pit = *lower;
   if (upper->pit) {
       greenfield = *lower;
       pit = *upper;
     }
+
+  //printf("Pair 2\n");
 
   if (search_config.search_type == SearchType::SINGLE_PIT) {
     single_pit = single_pit_details;
@@ -259,6 +268,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
       upper_dam_wall_height = dam_wall_heights[0];
     upper_water_rock_estimate = INF;
   }
+  //printf("Pair 3\n");
 
   if (!lower->brownfield && !lower->ocean) {
     lower_dam_wall_height =
@@ -281,18 +291,21 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
       lower_dam_wall_height = dam_wall_heights[0];
     lower_water_rock_estimate = INF;
   }
+  //printf("Pair 4\n");
 
   if ((!upper->brownfield && upper_dam_wall_height > upper->max_dam_height) ||
       (!lower->brownfield && !lower->ocean &&
        lower_dam_wall_height > lower->max_dam_height)) {
     return NULL;
   }
+  //printf("Pair 5\n");
 
   if ((upper_water_rock_estimate * lower_water_rock_estimate) <
       min_pair_water_rock *
           (upper_water_rock_estimate + lower_water_rock_estimate)) {
     return NULL;
   }
+  //printf("Pair 6\n");
 
   ArrayCoordinate upper_coordinates = upper->pour_point;
   ArrayCoordinate lower_coordinates = lower->pour_point;
@@ -304,6 +317,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   if (SQ(head * 0.001) < least_distance * SQ(min_slope)) {
     return NULL;
   }
+  //printf("Pair 7\n");
 
   if(search_config.search_type==SearchType::OCEAN){
     lower->pour_point=lower_coordinates;
@@ -314,7 +328,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
 
   upper_reservoir.identifier = upper->identifier;
   upper_reservoir.volume = required_volume;
-
+  
   if (!upper->brownfield) {
     upper_reservoir.dam_volume = linear_interpolate(
         upper_dam_wall_height, dam_wall_heights, upper->dam_volumes);
@@ -325,6 +339,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   } else {
     upper_reservoir.area = upper->areas[0];
   }
+  //printf("Pair 8\n");
   upper_reservoir.water_rock = upper_water_rock_estimate;
   upper_reservoir.dam_height = upper_dam_wall_height;
   upper_reservoir.max_dam_height = upper->max_dam_height;
@@ -335,6 +350,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   upper_reservoir.brownfield = upper->brownfield;
   upper_reservoir.river = upper->river;
   upper_reservoir.pit = upper->pit;
+  upper_reservoir.turkey = upper->turkey;
 
   lower_reservoir.identifier = lower->identifier;
   lower_reservoir.volume = required_volume;
@@ -349,6 +365,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   } else {
     lower_reservoir.area = lower->areas[0];
   }
+  //printf("Pair 9\n");
   lower_reservoir.water_rock = lower_water_rock_estimate;
   lower_reservoir.dam_height = lower_dam_wall_height;
   lower_reservoir.max_dam_height = lower->max_dam_height;
@@ -360,6 +377,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   lower_reservoir.river = lower->river;
   lower_reservoir.pit = lower->pit;
   lower_reservoir.ocean = lower->ocean;
+  lower_reservoir.turkey = lower->turkey;
 
   pair->identifier = upper->identifier + " & " + lower->identifier;
   pair->upper = upper_reservoir;
@@ -376,6 +394,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
       1 / (1 / pair->upper.water_rock + 1 / pair->lower.water_rock);
 
   set_FOM(pair);
+  //printf("Pair 10\n");
 
   if (pair->FOM > max_FOM)
     return NULL;
@@ -391,6 +410,7 @@ void pairing(vector<unique_ptr<RoughReservoir>> &upper_reservoirs,
     set<Pair> a;
     temp_pairs.push_back(a);
   }
+  //printf("Success 1\n");
 
   for (uint iupper = 0; iupper < upper_reservoirs.size(); iupper++) {
     RoughReservoir* upper_reservoir = upper_reservoirs[iupper].get();
@@ -449,7 +469,7 @@ void pairing(vector<unique_ptr<RoughReservoir>> &upper_reservoirs,
       if (SQ(head * 0.001) <= min_dist_sqd * SQ(min_pp_slope))
         continue;
 
-
+      
       for (uint itest = 0; itest < tests.size(); itest++) {
         Pair temp_pair;
         int max_FOM =
@@ -460,8 +480,9 @@ void pairing(vector<unique_ptr<RoughReservoir>> &upper_reservoirs,
         if (check_good_pair(upper_reservoir, lower_reservoir,
                             tests[itest].energy_capacity,
                             tests[itest].storage_time, &temp_pair, max_FOM)) {
+          //printf("Success 2\n");
           temp_pairs[itest].insert(temp_pair);
-
+          //printf("Success 3\n");
           if ((int)temp_pairs[itest].size() > max_lowers_per_upper ||
               ((search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::SINGLE_PIT)&&
               temp_pairs[itest].size() > 1))
@@ -511,6 +532,57 @@ int main(int nargs, char **argv) {
     if (search_config.search_type == SearchType::SINGLE_PIT) {
       single_pit_details = get_pit_details(search_config.name);
     }
+  } else if (search_config.search_type == SearchType::TURKEY) {
+      // Import greenfield
+      vector<unique_ptr<RoughReservoir>> greenfield_reservoirs = read_rough_reservoir_data(
+          convert_string(file_storage_location + "processing_files/reservoirs/" +
+                         str(search_config.grid_square) + "_reservoirs_data.csv"));
+      
+      for(size_t i = 0; i<greenfield_reservoirs.size(); i++)
+        upper_reservoirs.push_back(std::move(greenfield_reservoirs[i]));
+
+      // Import ocean
+      try {
+        vector<unique_ptr<RoughReservoir>> ocean_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/reservoirs/ocean_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv"));
+
+        for(size_t i = 0; i<ocean_reservoirs.size(); i++)
+          upper_reservoirs.push_back(std::move(ocean_reservoirs[i]));
+
+      } catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/reservoirs/ocean_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv");
+      }
+
+      // Import pits
+      try {
+        vector<unique_ptr<RoughReservoir>> brownfield_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/reservoirs/bulk_pit_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv"));
+
+        for(size_t i = 0; i<brownfield_reservoirs.size(); i++)
+          upper_reservoirs.push_back(std::move(brownfield_reservoirs[i]));
+      } catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/reservoirs/bulk_pit_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv");
+      }
+
+      // Import existing
+      try {
+        vector<unique_ptr<RoughReservoir>> existing_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/reservoirs/existing_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv"));
+
+        for(size_t i = 0; i<existing_reservoirs.size(); i++)
+          upper_reservoirs.push_back(std::move(existing_reservoirs[i]));
+      }  catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/reservoirs/existing_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv");
+      }
   } else
     upper_reservoirs = read_rough_reservoir_data(
         convert_string(file_storage_location + "processing_files/reservoirs/" +
@@ -549,6 +621,8 @@ int main(int nargs, char **argv) {
                                  "_reservoirs_data.csv");
     }
   }
+  //RoughReservoir* lower_reservoir = lower_reservoirs[0].get();
+  //printf("Turkeys3 %i\n", lower_reservoir->turkey);
   search_config.logger.debug("Read in "+to_string(upper_reservoirs.size())+" uppers");
   search_config.logger.debug("Read in " + to_string(lower_reservoirs.size()) + " lowers");
 
@@ -575,7 +649,7 @@ int main(int nargs, char **argv) {
   write_rough_pair_data_header(csv_data_file);
 
   pairing(upper_reservoirs, lower_reservoirs, csv_file, csv_data_file, true);
-  if (search_config.search_type.existing())
+  if (search_config.search_type.existing() || search_config.search_type == SearchType::BULK_PIT)
     pairing(lower_reservoirs, upper_reservoirs, csv_file, csv_data_file);
 
   int total = 0;

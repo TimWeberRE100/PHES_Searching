@@ -69,6 +69,13 @@ public:
   explicit RoughBfieldReservoir(const RoughReservoir &r) : RoughReservoir(r) {}
 };
 
+class RoughTurkeyReservoir : public RoughReservoir {
+public:
+  vector<ArrayCoordinate> shape_bound;
+  RoughTurkeyReservoir() {};
+  RoughTurkeyReservoir(RoughReservoir r) : RoughReservoir(r) {}
+};
+
 struct ExistingReservoir {
   string identifier;
   double latitude;

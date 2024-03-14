@@ -78,8 +78,14 @@ void read_shp_filter(string filename, Model<bool>* filter){
     SHPClose(SHP);
 }
 
-std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_points, bool add_edge){
+
+std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_points, bool add_border){
 	std::vector<ArrayCoordinate> edge_points;
+
+	if (polygon_points.size() <= 4) {
+		edge_points = polygon_points;
+		return edge_points;
+	}
 
 	auto model_row_iter = std::max_element(polygon_points.begin(), polygon_points.end(), [](const ArrayCoordinate& p1, const ArrayCoordinate& p2) {
         return p1.row < p2.row;
@@ -93,6 +99,11 @@ std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_poin
 	std::vector<std::vector<bool>> seen_points(model_rows, std::vector<bool>(model_cols, false));
 	
 	for (const auto& point : polygon_points) {
+		if(seen_points[point.row][point.col] == true && !add_border)
+			continue;
+		else if(!add_border)
+			seen_points[point.row][point.col] = true;	
+
 		for (uint d=0; d<directions.size(); d++) {
 			if (directions[d].row * directions[d].col != 0)
 				continue;	
@@ -102,13 +113,13 @@ std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_poin
 			if(neighbor.row<0 || neighbor.col<0 || neighbor.row>=model_rows || neighbor.col>=model_cols)
 				continue;
 			
-			if(seen_points[neighbor.row][neighbor.col] == true)
+			if(seen_points[neighbor.row][neighbor.col] == true && add_border)
 				continue;
-			else
+			else if(add_border)
 				seen_points[neighbor.row][neighbor.col] = true;	
 			
 			if(std::find(polygon_points.begin(), polygon_points.end(), neighbor) == polygon_points.end()){
-				if(add_edge)
+				if(add_border)
 					edge_points.push_back(neighbor);
 				else {
 					edge_points.push_back(point);
