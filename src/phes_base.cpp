@@ -227,20 +227,30 @@ void set_FOM(Pair* pair){
 		power_house_cost = 2*calculate_power_house_cost(power/2, head/2);
 		tunnel_cost = 2*calculate_tunnel_cost(power/2, head/2, seperation/2);
 		power_cost = 0.001*(power_house_cost+tunnel_cost)/power;
+
+		if(pair->lower.ocean){
+			double total_lining_cost = lining_cost*pair->upper.area*meters_per_hectare;
+			power_house_cost = power_house_cost*sea_power_scaling;
+			double marine_outlet_cost = ref_marine_cost*(power/2)*ref_head/(ref_power*head);
+			power_cost = 0.001*((power_house_cost+tunnel_cost)/power + marine_outlet_cost/power);
+			energy_cost += 0.000001*total_lining_cost/pair->energy_capacity;
+		}
 	}
 	else {
 		power_house_cost = calculate_power_house_cost(power, head);
 		tunnel_cost = calculate_tunnel_cost(power, head, seperation);
 		power_cost = 0.001*(power_house_cost+tunnel_cost)/power;
-	}
 
-	if(pair->lower.ocean){
+		if(pair->lower.ocean){
 			double total_lining_cost = lining_cost*pair->upper.area*meters_per_hectare;
 			power_house_cost = power_house_cost*sea_power_scaling;
 			double marine_outlet_cost = ref_marine_cost*power*ref_head/(ref_power*head);
 			power_cost = 0.001*((power_house_cost+tunnel_cost)/power + marine_outlet_cost/power);
 			energy_cost += 0.000001*total_lining_cost/pair->energy_capacity;
 		}
+	}
+
+	
 
 	pair->FOM = power_cost+energy_cost*pair->storage_time;
 
