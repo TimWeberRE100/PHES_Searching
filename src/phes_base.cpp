@@ -248,9 +248,7 @@ void set_FOM(Pair* pair){
 			power_cost = 0.001*((power_house_cost+tunnel_cost)/power + marine_outlet_cost/power);
 			energy_cost += 0.000001*total_lining_cost/pair->energy_capacity;
 		}
-	}
-
-	
+	}	
 
 	pair->FOM = power_cost+energy_cost*pair->storage_time;
 
@@ -596,6 +594,16 @@ std::string get_class(char category){
 		printf("Unknown cost class.");
 		exit(1);
 	}
+
+	return to_return;
+}
+
+std::string get_class_order(char category){
+	std::string to_return = to_string(1);
+	
+	if (category != 'Z'){
+		to_return = to_string(71-category);
+	} 
 
 	return to_return;
 }

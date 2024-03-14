@@ -233,5 +233,6 @@ vector<ExistingPit> get_pit_details(GridSquare grid_square);
 ExistingPit get_pit_details(string pitname);
 RoughBfieldReservoir pit_to_rough_reservoir(BulkPit pit, GeographicCoordinate lowest_point);
 std::string get_class(char category);
+std::string get_class_order(char category);
 
 #endif
