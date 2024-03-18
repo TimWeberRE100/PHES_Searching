@@ -396,7 +396,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   set_FOM(pair);
   //printf("Pair 10\n");
 
-  if (pair->FOM > max_FOM)
+  if (pair->FOM > max_FOM && (!pair->upper.turkey && !pair->lower.turkey))
     return NULL;
   return pair;
 }

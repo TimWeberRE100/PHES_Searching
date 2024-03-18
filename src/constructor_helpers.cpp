@@ -253,7 +253,7 @@ vector<ArrayCoordinate> convert_to_polygon(Model<char>* model, ArrayCoordinate o
     if(!succesful_path){
       search_config.logger.error("Could not find a succesful path around the polygon.");
       search_config.logger.debug("Threshold: " + to_string(threshold));
-      model->set(pour_point.row+offset.row, pour_point.col+offset.col, model->get(pour_point.row+offset.row, pour_point.col+offset.col)+100);
+      model->set(pour_point.row+offset.row, pour_point.col+offset.col, model->get(pour_point.row+offset.row, pour_point.col+offset.col)+3);
       model->write(to_string(threshold)+"dump.tif", GDT_Byte);
       throw 1;
     }
@@ -312,7 +312,7 @@ vector<ArrayCoordinate> order_polygon(vector<ArrayCoordinate> unordered_edge_poi
 vector<GeographicCoordinate> convert_poly(vector<ArrayCoordinate> polygon){
     vector<GeographicCoordinate> to_return;
     for(uint i = 0; i<polygon.size(); i++){
-    	to_return.push_back(convert_coordinates(polygon[i], 0.5));
+    	to_return.push_back(convert_coordinates(polygon[i], 0));
     }
     return to_return;
 }
@@ -597,7 +597,7 @@ bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinate
 }
 
 bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
-                     vector<vector<vector<GeographicCoordinate>>> &countries,
+                     vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model) {
   //printf("Success 2\n");
@@ -605,12 +605,8 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
   coordinates->reservoir = polygon_string;
   reservoir->reservoir_polygon = reservoir->shape_bound;
 
-  for(uint i = 0; i< countries.size();i++){
-      if(check_within(GeographicCoordinate_init(reservoir->latitude, reservoir->longitude), countries[i])){
-          reservoir->country = country_names[i];
-          break;
-      }
-  }
+  reservoir->country = find_country(GeographicCoordinate_init(reservoir->latitude, reservoir->longitude), countries, country_names);
+
   //printf("Res size: %i %i %i\n", (int)reservoir->shape_bound.size(), reservoir->shape_bound[0].row, reservoir->shape_bound[0].col);
 
   if (reservoir->turkey){
@@ -621,7 +617,12 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
       convert_coordinates(ArrayCoordinate_init(0, 0, flow_directions->get_origin())),
       DEM->get_origin());
 
-    for (ArrayCoordinate point : reservoir->reservoir_polygon) {
+    // Flood algorithm for reservoir full_cur_model
+    turkey_reservoir_fill(reservoir->reservoir_polygon, full_cur_model, reservoir->pour_point, offset);
+
+    //printf("Success 1\n");
+
+    /* for (ArrayCoordinate point : reservoir->reservoir_polygon) {
       for (uint d=0; d<directions.size(); d++) {
         if (directions[d].row * directions[d].col != 0)
           continue;	
@@ -635,17 +636,18 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
           full_cur_model->set(point.row, point.col, 1);
         }
       }
-    }
+    } */
 
-    vector<ArrayCoordinate> reservoir_polygon = convert_to_polygon(full_cur_model, offset, reservoir->pour_point, 1);
-    
-    model_dam_wall(reservoir, coordinates, DEM, reservoir->reservoir_polygon, full_cur_model, offset);
+    vector<ArrayCoordinate> reservoir_polygon = convert_to_polygon(full_cur_model, offset, reservoir->reservoir_polygon[0], 1);
+    //printf("Success 4\n");
+    model_dam_wall(reservoir, coordinates, DEM, reservoir_polygon, full_cur_model, offset);
 
     string polygon_string =
         str(compress_poly(corner_cut_poly(convert_poly(reservoir_polygon))),
             reservoir->elevation + reservoir->dam_height);
     coordinates->reservoir = polygon_string;
 
+    // Clear the full_cur_model
     queue<ArrayCoordinate> q;
     q.push(reservoir->reservoir_polygon[0]);
     while (!q.empty()) {

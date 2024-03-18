@@ -100,8 +100,9 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   pair->volume = min(pair->upper.volume, pair->lower.volume);
   pair->water_rock =
       1 / ((1 / pair->upper.water_rock) + (1 / pair->lower.water_rock));
-  /* set_FOM(pair);
+  set_FOM(pair);
   if (pair->FOM > max_FOM || pair->category == 'Z') {
+    printf("FOM: %.2f %d\n",pair->FOM,max_FOM);
     return false;
   }
   

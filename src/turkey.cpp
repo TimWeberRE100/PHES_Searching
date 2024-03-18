@@ -390,3 +390,35 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
 
     return true;
 }
+
+void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset) {
+    // Find outline of circle
+    for (ArrayCoordinate point : reservoir_polygon) {
+        full_cur_model->set(point.row+offset.row, point.col+offset.col, 1);
+    }
+
+    //printf("Success 3, %d %d\n",interior_point.row, interior_point.col);
+
+    // Flood circle
+    queue<ArrayCoordinate> q;
+    ArrayCoordinate interior_point_full = {interior_point.row+offset.row, interior_point.col+offset.col,offset.origin};
+    q.push(interior_point_full);
+    while (!q.empty()) {
+      ArrayCoordinate p = q.front();
+      q.pop();
+
+      for (uint d=0; d<directions.size(); d++) {
+        if (directions[d].row * directions[d].col != 0)
+          continue;	
+
+        ArrayCoordinate neighbor = {p.row+directions[d].row, p.col+directions[d].col, p.origin};
+
+        if (full_cur_model->get(neighbor.row, neighbor.col) == 1)
+            continue;
+
+        full_cur_model->set(neighbor.row, neighbor.col, 1);
+        q.push(neighbor);
+      }
+    }
+    return;
+}

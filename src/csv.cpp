@@ -540,7 +540,7 @@ vector<vector<Pair>> read_rough_pair_data(char *filename) {
     pair.upper.brownfield = stoi(line[11]) > 0;
     pair.upper.pit = stoi(line[11]) == 2;
     pair.upper.river = stoi(line[11]) == 3;
-    pair.upper.turkey = stoi(line[12] > 0
+    pair.upper.turkey = stoi(line[12]) > 0;
 
     pair.lower.identifier = line[13];
     pair.lower.dam_height = stod(line[17]);
@@ -762,7 +762,7 @@ std::string url_encode(const std::string &value) {
 
 std::string generate_map_url(Pair* pair) {
     std::string atlas_type;    
-    if ((pair->upper.brownfield|| pair->lower.brownfield) && (!pair->upper.pit || !pair->lower.pit) && (!pair->upper.river || !pair->lower.river)){
+    if ((pair->upper.brownfield || pair->lower.brownfield) && (!pair->upper.pit && !pair->lower.pit) && (!pair->upper.river && !pair->lower.river)){
       atlas_type = convert_string("Bluefield");
     } else if (pair->upper.pit || pair->lower.pit){
       atlas_type = convert_string("Brownfield");

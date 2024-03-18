@@ -607,6 +607,7 @@ std::string get_class_order(char category){
 	} 
 
 	return to_return;
+}
 
 RoughTurkeyReservoir turkey_to_rough_reservoir(TurkeyCharacteristics turkey){
 	RoughReservoir reservoir;

@@ -30,7 +30,7 @@ bool model_reservoir(Reservoir *reservoir,
                      vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names);
 bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
-                     vector<vector<vector<GeographicCoordinate>>> &countries,
+                     vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model);
 #endif
