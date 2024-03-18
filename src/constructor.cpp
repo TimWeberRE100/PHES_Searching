@@ -110,22 +110,26 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.river && !pair->lower.river) {
     *non_overlap = true;
 
-    // Overlap between upper and lower reservoirs, and overlap with other sites
+    // Overlap between upper and lower reservoirs
+    for (ArrayCoordinate ac : pair->lower.reservoir_polygon){
+      if(check_within(convert_coordinates(ac), compress_poly(corner_cut_poly(convert_poly(pair->upper.reservoir_polygon)))))
+        return false;
+    }
+    for (ArrayCoordinate ac : pair->upper.reservoir_polygon){
+      if(check_within(convert_coordinates(ac), compress_poly(corner_cut_poly(convert_poly(pair->lower.reservoir_polygon)))))
+        return false;
+    }
+
+    // Overlap with other sites
     for (ArrayCoordinate ac : pair->lower.reservoir_polygon){
       if(!*non_overlap)
         break;
-
-      if(check_within(convert_coordinates(ac), compress_poly(corner_cut_poly(convert_poly(pair->upper.reservoir_polygon)))))
-        return false;
 
       *non_overlap = (!check_within(convert_coordinates(ac), seen_polygons) && *non_overlap);
     }
     for (ArrayCoordinate ac : pair->upper.reservoir_polygon){
       if(!*non_overlap)
         break;
-      
-      if(check_within(convert_coordinates(ac), compress_poly(corner_cut_poly(convert_poly(pair->lower.reservoir_polygon)))))
-        return false;
       
       *non_overlap = (!check_within(convert_coordinates(ac), seen_polygons) && *non_overlap);
     }
@@ -137,6 +141,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
       seen_polygons.push_back(compress_poly(corner_cut_poly(convert_poly(pair->lower.reservoir_polygon))));
   }
 
+  // Has Bluefield ID been seen before?
   if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.pit && !pair->lower.pit){
     *non_overlap = true;
 
