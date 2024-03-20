@@ -134,6 +134,15 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
       *non_overlap = (!check_within(convert_coordinates(ac), seen_polygons) && *non_overlap);
     }
 
+    for (std::vector<GeographicCoordinate> polygon: seen_polygons) {
+      for (GeographicCoordinate gc : polygon) {
+        if(!*non_overlap)
+          break;
+        
+        *non_overlap = (!check_within(gc, compress_poly(corner_cut_poly(convert_poly(pair->upper.reservoir_polygon)))) && !check_within(gc, compress_poly(corner_cut_poly(convert_poly(pair->upper.reservoir_polygon)))) && *non_overlap);
+      }
+    }
+
     if(pair->upper.pit)
       seen_polygons.push_back(compress_poly(corner_cut_poly(convert_poly(pair->upper.reservoir_polygon))));
 
