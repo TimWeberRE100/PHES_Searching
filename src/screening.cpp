@@ -12,7 +12,7 @@
 #include <gdal/gdal.h>
 #include <climits>
 
-bool debug_output = true;
+bool debug_output = false;
 
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
@@ -869,7 +869,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 	}
 	write_rough_reservoir_data_header(csv_data_file);
 
-	printf("Success 1\n");
+	//printf("Success 1\n");
 	for(int row = 0; row<DEM->nrows();row++) {
 		for(int col = 0; col<DEM->ncols();col++) {	
 			if ((!turkey_flat_mask->get(row,col)) && (!turkey_depression_mask->get(row,col))) {
@@ -883,23 +883,60 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 			// Model turkey nests on flat land
 			if ((turkey_flat_mask->get(row,col)) && (!seen_f->get(row,col))) {
 				// Locate flat region based upon interconnected cells on the mask
-				std::vector<ArrayCoordinate> interconnected_flat_points;
-				double interconnected_flat_area = mask_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points);
+				std::vector<std::vector<ArrayCoordinate>> interconnected_flat_points;
+				std::vector<double> individual_region_areas;
+				double interconnected_flat_area = flat_mask_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points, individual_region_areas);
 				
 				if (interconnected_flat_area < min_watershed_area){
-					printf("Success 2 %.2f %i\n", interconnected_flat_area, (int)interconnected_flat_points.size());
+					//printf("Success 2 %.2f %i\n", interconnected_flat_area, (int)interconnected_flat_points.size());
 					continue;
 				}
 
 				int counter = 0; //DEBUG
-				while(!interconnected_flat_points.empty()) {
+				for(uint i=0; i<interconnected_flat_points.size();i++) {
+					if (individual_region_areas[i] < min_watershed_area)
+						continue;
+
+					std::vector<ArrayCoordinate> individual_turkey_region = interconnected_flat_points[i];
+
+					//printf("Success 3 %i %i %i %i %i %i\n", row, col, individual_turkey_region[0].row, individual_turkey_region[0].col, int(individual_turkey_region.size()), counter);
+
+
+					TurkeyCharacteristics turkey(individual_turkey_region[0].row,individual_turkey_region[0].col,DEM->get_origin());
+
+					i++;
+
+					turkey.identifier = str(search_config.grid_square) + "_TURKEYF" + str(i);
+					
+					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
+						
+					if(model_check)
+						res_count++;
+					else{
+						continue;
+					}
+						
+					if(debug_output){
+						for(ArrayCoordinate point : turkey.reservoir_points)
+								//turkey_mask_debug->set(point.row, point.col, true);
+								continue;
+						for(GeographicCoordinate point : turkey.polygon){
+							ArrayCoordinate ac = convert_coordinates(point,get_origin(search_config.grid_square,border));
+							turkey_mask_debug->set(ac.row,ac.col,true);
+						}
+					}
+	
+					//printf("Success 7\n");
+				}
+
+				/*while(!interconnected_flat_points.empty()) {
 					counter++; //DEBUG
 					printf("Success 3 %i %i %i %i %i %i\n", row, col, interconnected_flat_points[0].row, interconnected_flat_points[0].col, int(interconnected_flat_points.size()), counter);
 
 					std::vector<ArrayCoordinate> individual_turkey_region;
 
 					// If the interconnected flat area is very large, fishnet into smaller squares
-					printf("Success 4\n");
+					//printf("Success 4\n");
 					int individual_region_area = 0;
 					if (interconnected_flat_area > max_turkey_area)
 						individual_region_area = find_fishnet_area(interconnected_flat_points, max_turkey_area, individual_turkey_region); 
@@ -920,8 +957,8 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 					i++;
 
 					turkey.identifier = str(search_config.grid_square) + "_TURKEYF" + str(i);
-					printf("Success 6\n");
-					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
+					//printf("Success 6\n");
+					bool model_check = model_rough_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
 						
 					if(model_check)
 						res_count++;
@@ -939,28 +976,28 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 						}
 					}
 	
-					printf("Success 7\n");	
-				}				
+					//printf("Success 7\n");	
+				}*/			
 			}
 
 			// Model turkey nests around natural depressions
 			if ((turkey_depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
-				printf("Success 8 %d\n",i);
+				//printf("Success 8 %d\n",i);
 				std::vector<ArrayCoordinate> individual_turkey_region;
 
 				TurkeyCharacteristics turkey(row,col,DEM->get_origin());
 
-				double interconnected_depression_area = mask_area_calculator(row, col, turkey_depression_mask, seen_d, individual_turkey_region);
-				printf("Success 8.1, %.2f\n", interconnected_depression_area);
+				double interconnected_depression_area = depression_mask_area_calculator(row, col, turkey_depression_mask, seen_d, individual_turkey_region);
+				//printf("Success 8.1, %.2f\n", interconnected_depression_area);
 				if(interconnected_depression_area < 0.5*min_watershed_area || interconnected_depression_area > max_turkey_area)
 					continue;
 
 				i++;
-				printf("Success 8.2\n");
+				//printf("Success 8.2\n");
 				turkey.identifier = str(search_config.grid_square) + "_TURKEYD" + str(i);
-				printf("Success 8.3, %s\n",turkey.identifier.c_str());
+				//printf("Success 8.3, %s\n",turkey.identifier.c_str());
 				bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, false);
-				printf("Success 9\n");
+				//printf("Success 9\n");
 				if(!model_check)
 					continue;
 				else
@@ -983,7 +1020,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 	fclose(csv_file);
     fclose(csv_data_file);
 
-	printf("Success 11\n");
+	//printf("Success 11\n");
 
 	if(debug_output){
 		mkdir(convert_string(file_storage_location+"debug/turkey_mask_debug"),0777);

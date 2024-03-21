@@ -16,7 +16,7 @@ bool is_dam_wall(ArrayCoordinate point1, ArrayCoordinate point2, Model<short>* D
 
 vector<ArrayCoordinate> convert_to_polygon(Model<char>* model, ArrayCoordinate offset, ArrayCoordinate pour_point, int threshold);
 vector<ArrayCoordinate> order_polygon(vector<ArrayCoordinate> unordered_edge_points);
-vector<GeographicCoordinate> convert_poly(vector<ArrayCoordinate> polygon);
+vector<GeographicCoordinate> convert_poly(vector<ArrayCoordinate> polygon, double offset=0.0);
 vector<GeographicCoordinate> corner_cut_poly(vector<GeographicCoordinate> polygon);
 vector<GeographicCoordinate> compress_poly(vector<GeographicCoordinate> polygon);
 string str(vector<GeographicCoordinate> polygon, double elevation);

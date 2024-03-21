@@ -102,9 +102,11 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
       1 / ((1 / pair->upper.water_rock) + (1 / pair->lower.water_rock));
   set_FOM(pair);
   if (pair->FOM > max_FOM || pair->category == 'Z') {
-    printf("FOM: %.2f %d\n",pair->FOM,max_FOM);
+    //printf("FOM: %.2f %d\n",pair->FOM,max_FOM);
     return false;
   }
+
+  //printf("SUCCESS1\n");
   
   // Check overlap between reservoirs during pit and existing reservoir constructor
   if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.river && !pair->lower.river) {
@@ -188,6 +190,7 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen,
   } else {
     pair->non_overlap = 0;
   }
+  //printf("SUCCESS\n");
 
     GeographicCoordinate average = GeographicCoordinate_init((convert_coordinates(upper_closest_point).lat+convert_coordinates(lower_closest_point).lat)/2,
     	((convert_coordinates(upper_closest_point).lon+convert_coordinates(lower_closest_point).lon)/2));
@@ -308,8 +311,10 @@ int main(int nargs, char **argv)
             Pair_KML pair_kml;
             bool non_overlap;
             int max_FOM = category_cutoffs[0].storage_cost*tests[i].storage_time+category_cutoffs[0].power_cost;
+            //printf("Success 6\n");
 
             if(model_pair(&pairs[i][j], &pair_kml, seen, &non_overlap, max_FOM, big_model, full_cur_model, countries, country_names, seen_polygons, seen_ids)){
+                //printf("Success 7\n");
                 write_pair_csv(csv_file_classes, &pairs[i][j], false);
                 //printf("Success 8\n");
                 write_pair_csv(csv_file_FOM, &pairs[i][j], true);

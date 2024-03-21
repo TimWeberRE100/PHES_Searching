@@ -770,7 +770,9 @@ std::string generate_map_url(Pair* pair) {
       atlas_type = convert_string("Seasonal");
     } else if (pair->lower.ocean){
       atlas_type = convert_string("Ocean");
-    } else {
+    } else if (pair->upper.turkey || pair->lower.turkey) {
+      atlas_type = convert_string("Turkey's Nest");
+    }else {
       atlas_type = convert_string("Greenfield");
     }
 
