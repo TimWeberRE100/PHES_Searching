@@ -40,12 +40,10 @@ struct TurkeyCharacteristics {
 
 double depression_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<ArrayCoordinate> &interconnected_points);
 double flat_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<std::vector<ArrayCoordinate>> &interconnected_points, std::vector<double> &individual_region_areas);
-double find_fishnet_area(std::vector<ArrayCoordinate> &large_region, int max_area, std::vector<ArrayCoordinate> &small_region);
 Model<bool>* find_flat_land(Model<float> *DEM, Model<bool> *filter, int maximum_slope);
 void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM);
 Circle welzl_algorithm(std::vector<ArrayCoordinate> &region_points, std::vector<ArrayCoordinate> outside_points, uint remaining_points, GeographicCoordinate origin);
-Circle find_minimum_enclosing_circle(Model<bool> *polygon_mask);
-Circle approximate_pole_of_inaccessibility(vector<ArrayCoordinate> polygon_points);
+Circle find_minimum_enclosing_circle(std::vector<ArrayCoordinate> &region_points);
 bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoordinate> &individual_turkey_region, Model<short> *DEM, TurkeyCharacteristics &turkey, bool flat_check);
 void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset);
 

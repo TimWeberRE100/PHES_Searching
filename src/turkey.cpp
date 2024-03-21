@@ -144,7 +144,6 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM){
         if(dam_wall_heights[dam_height_i] > max_turkey_dam_height)
             continue;
 
-        ////// NEED TO DO COMPLEX VOLUME MODEL INCLUDING FREEBOARD AND BATTER
         ////// COMPARE DAM VOLUME CALCULATED HERE WITH THAT IN CONSTRUCTOR
         // Determine maximum dam top elevation
         int max_dam_top_elevation = lowest_dam_elevation + dam_wall_heights[dam_height_i];
@@ -173,7 +172,7 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM){
             
             previous_point = turkey.polygon[idx];
             dam_point_count++;
-            dam_height_square_sum += pow(max_dam_top_elevation - dam_base_elevations[idx],2);
+            dam_height_square_sum += pow(max_dam_top_elevation + freeboard - dam_base_elevations[idx],2);
         }
         double dam_height_square_avg = (double)dam_height_square_sum / dam_point_count;
 
