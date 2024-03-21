@@ -48,6 +48,5 @@ Circle find_minimum_enclosing_circle(Model<bool> *polygon_mask);
 Circle approximate_pole_of_inaccessibility(vector<ArrayCoordinate> polygon_points);
 bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoordinate> &individual_turkey_region, Model<short> *DEM, TurkeyCharacteristics &turkey, bool flat_check);
 void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset);
-bool model_rough_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoordinate> &individual_turkey_region, Model<short> *DEM, TurkeyCharacteristics &turkey, bool flat_check);
 
 #endif

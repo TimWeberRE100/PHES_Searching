@@ -46,7 +46,7 @@ pit_lake_relative_depth = 0.10;  // Pit lakes typically have a relative depth (m
 
 max_turkey_area = 200;  // Maximum area (ha) of a turkey nest screening polygon
 max_turkey_slope = 5;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
-max_turkey_dam_height = 40; // Maximum height (m) of turkey nest dams
+max_turkey_dam_height = 150; // Maximum height (m) of turkey nest dams
 
 // Pairing
 min_head = 100;					// Minimum head (m) to be considered a potential pairS
