@@ -442,7 +442,7 @@ bool model_dam_wall(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates
  * Pass negative reservoir volume to model single dam wall height
  */
 bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
-                     Model<bool> *seen, bool *non_overlap, vector<ArrayCoordinate> *used_points,
+                     Model<bool> *seen, Model<bool> *seen_tn, bool *non_overlap, vector<ArrayCoordinate> *used_points,
                      BigModel big_model, Model<char> *full_cur_model,
                      vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names) {
@@ -505,6 +505,31 @@ bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinate
 					return false;
 				}
 			}
+
+      if (seen_tn != NULL && seen_tn->get(full_big_ac.row, full_big_ac.col)){
+        // If a Bluefield, Turkey, or Pit exists on top of the Greenfield, skip the Greenfield
+        // full_cur_model must be cleared first
+        queue<ArrayCoordinate> q;
+        q.push(reservoir->pour_point);
+        while (!q.empty()) {
+          ArrayCoordinate p = q.front();
+          q.pop();
+          full_cur_model->set(p.row + offset.row, p.col + offset.col, 0);
+          for (uint d = 0; d < directions.size(); d++) {
+            ArrayCoordinate neighbor = {p.row + directions[d].row,
+                                        p.col + directions[d].col, p.origin};
+            if (full_cur_model->get(neighbor.row + offset.row,
+                                    neighbor.col + offset.col) != 0) {
+              full_cur_model->set(neighbor.row + offset.row,
+                                  neighbor.col + offset.col, 0);
+              q.push(neighbor);
+            }
+          }
+        }
+
+				return false;
+			}
+
       if (DEM->get(full_big_ac.row, full_big_ac.col) < -2000)
         return false;
 
@@ -599,44 +624,61 @@ bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinate
 bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates,
                      vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names, Model<char> *full_cur_model,
-                     BigModel big_model) {
+                     BigModel big_model, std::vector<ArrayCoordinate> *used_points, Model<bool> *seen, Model<bool> *seen_tn, bool *non_overlap) {
   //printf("Success 2\n");
   string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation + reservoir->fill_depth);
-  coordinates->reservoir = polygon_string;
+  
+  if (coordinates != NULL)
+    coordinates->reservoir = polygon_string;
+
   reservoir->reservoir_polygon = reservoir->shape_bound;
-
+  //printf("Success 2.1\n");
   reservoir->country = find_country(GeographicCoordinate_init(reservoir->latitude, reservoir->longitude), countries, country_names);
-
+  //printf("Success 2.2\n");
   //printf("Res size: %i %i %i\n", (int)reservoir->shape_bound.size(), reservoir->shape_bound[0].row, reservoir->shape_bound[0].col);
 
   if (reservoir->turkey){
     Model<short> *DEM = big_model.DEM;
     Model<char> *flow_directions = big_model.flow_directions[0];
-
+    //printf("Success 2.3\n");
     ArrayCoordinate offset = convert_coordinates(
       convert_coordinates(ArrayCoordinate_init(0, 0, flow_directions->get_origin())),
       DEM->get_origin());
-
+    //printf("Success 2.4\n");
     // Flood algorithm for reservoir full_cur_model
-    turkey_reservoir_fill(reservoir->reservoir_polygon, full_cur_model, reservoir->pour_point, offset);
-
-    //printf("Success 1\n");
-
-    /* for (ArrayCoordinate point : reservoir->reservoir_polygon) {
-      for (uint d=0; d<directions.size(); d++) {
-        if (directions[d].row * directions[d].col != 0)
-          continue;	
-
-        ArrayCoordinate neighbor = ArrayCoordinate_init(point.row + directions[d].row, point.col + directions[d].col, point.origin);
-        
-        if(std::find(reservoir->reservoir_polygon.begin(), reservoir->reservoir_polygon.end(), neighbor) == reservoir->reservoir_polygon.end()){
-          full_cur_model->set(point.row, point.col, 2);
-          break;
-        } else {
-          full_cur_model->set(point.row, point.col, 1);
+    std::vector<ArrayCoordinate> temp_used_points;
+    temp_used_points.clear();
+    turkey_reservoir_fill(reservoir->reservoir_polygon, full_cur_model, reservoir->pour_point, offset, temp_used_points, big_model.DEM->get_origin());
+    
+    //printf("Success 2.5\n");
+    if (used_points != NULL)
+      for (uint i = 0; i < temp_used_points.size(); i++) {
+        if (seen != NULL && seen->get(temp_used_points[i].row, temp_used_points[i].col)){
+          if (non_overlap != NULL){
+            *non_overlap = false;
+          } else {
+            return false;
+          }
         }
       }
-    } */
+
+    
+    for (uint i = 0; i < temp_used_points.size(); i++) {
+      if (used_points != NULL)
+        used_points->push_back(temp_used_points[i]);
+
+      if (seen != NULL && non_overlap != NULL){
+        seen->set(temp_used_points[i].row, temp_used_points[i].col, true);
+      }
+
+      if (seen_tn != NULL){
+        seen_tn->set(temp_used_points[i].row, temp_used_points[i].col, true);
+      }
+    }
+    //printf("Success 2.6\n");
+    if (coordinates == NULL)
+      return true;
+    //printf("Success 1\n");
 
     vector<ArrayCoordinate> reservoir_polygon = convert_to_polygon(full_cur_model, offset, reservoir->reservoir_polygon[0], 1);
     //printf("Success 4\n");
@@ -648,24 +690,59 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
     coordinates->reservoir = polygon_string;
 
     // Clear the full_cur_model
-    queue<ArrayCoordinate> q;
-    q.push(reservoir->reservoir_polygon[0]);
-    while (!q.empty()) {
-      ArrayCoordinate p = q.front();
-      q.pop();
-      full_cur_model->set(p.row + offset.row, p.col + offset.col, 0);
-      for (uint d = 0; d < directions.size(); d++) {
-        ArrayCoordinate neighbor = {p.row + directions[d].row,
-                                    p.col + directions[d].col, p.origin};
-        if (full_cur_model->get(neighbor.row + offset.row,
-                                neighbor.col + offset.col) != 0) {
-          full_cur_model->set(neighbor.row + offset.row,
-                              neighbor.col + offset.col, 0);
-          q.push(neighbor);
+    if (full_cur_model != NULL) {
+      queue<ArrayCoordinate> q;
+      q.push(reservoir->reservoir_polygon[0]);
+      while (!q.empty()) {
+        ArrayCoordinate p = q.front();
+        q.pop();
+        full_cur_model->set(p.row + offset.row, p.col + offset.col, 0);
+        for (uint d = 0; d < directions.size(); d++) {
+          ArrayCoordinate neighbor = {p.row + directions[d].row,
+                                      p.col + directions[d].col, p.origin};
+          if (full_cur_model->get(neighbor.row + offset.row,
+                                  neighbor.col + offset.col) != 0) {
+            full_cur_model->set(neighbor.row + offset.row,
+                                neighbor.col + offset.col, 0);
+            q.push(neighbor);
+          }
         }
       }
     }
   }
   //printf("Success 3\n");
+  return true;
+}
+
+bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* coordinates, vector<vector<vector<vector<GeographicCoordinate>>>>& countries, vector<string>& country_names){
+  if(!reservoir->river){
+    ExistingReservoir r;
+    if (use_tiled_bluefield)
+      r = get_existing_tiled_reservoir(reservoir->identifier, reservoir->latitude,
+          reservoir->longitude);
+    else
+      r = get_existing_reservoir(reservoir->identifier);
+
+    if (coordinates != NULL) {
+      reservoir->volume = r.volume;
+      string polygon_string = str(compress_poly(corner_cut_poly(r.polygon)), reservoir->pit ? r.elevation+reservoir->dam_height : r.elevation+5);
+      coordinates->reservoir = polygon_string;
+    }
+
+    if (search_config.search_type.single()) 
+      search_config.grid_square = get_square_coordinate(get_existing_reservoir(search_config.name));
+    GeographicCoordinate origin = get_origin(search_config.grid_square, border);
+    reservoir->shape_bound.clear();
+    for(GeographicCoordinate p : r.polygon){
+      reservoir->shape_bound.push_back(convert_coordinates(p, origin));
+      reservoir->reservoir_polygon.push_back(convert_coordinates(p, origin));
+    }
+
+    if (coordinates == NULL)
+      return true;
+
+    //KML
+    reservoir->country = find_country(GeographicCoordinate_init(reservoir->latitude, reservoir->longitude), countries, country_names);
+  }
   return true;
 }

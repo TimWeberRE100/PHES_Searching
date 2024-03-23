@@ -292,6 +292,12 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
     turkey.centre_point = reference_point.centre_point;
 	turkey.radius = reference_point.radius; // metres
     turkey.min_elevation = DEM->get(turkey.centre_point.row, turkey.centre_point.col);
+
+    // If the TN pour_point is within the border, skip modelling.
+	// Prevents overlap between TN of different grid-squares
+	if(DEM->check_within_border(turkey.centre_point.row, turkey.centre_point.col)){
+		return false;
+	}
     
     // Calculate turkey nest area
     turkey.area = pi * turkey.radius * turkey.radius / 10000; // m2 to Ha
@@ -337,15 +343,24 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
     return true;
 }
 
-void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset) {
+void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset, std::vector<ArrayCoordinate> &temp_used_points, GeographicCoordinate big_model_origin) {    
     // Find outline of circle
+    //printf("START: %.2f %.2f %d\n", big_model_origin.lat, big_model_origin.lon, int(reservoir_polygon.size()));
     for (ArrayCoordinate point : reservoir_polygon) {
-        full_cur_model->set(point.row+offset.row, point.col+offset.col, 1);
+        ArrayCoordinate big_ac = convert_coordinates(convert_coordinates(point), big_model_origin);
+        temp_used_points.push_back(big_ac);
+        //printf("Test: %d %d, %d %d", big_ac.row, big_ac.col, point.row+offset.row, point.col+offset.col);
+        if (full_cur_model != NULL)
+            full_cur_model->set(point.row+offset.row, point.col+offset.col, 1);
     }
+    
+
+    if (full_cur_model == NULL)
+        return;
 
     // Flood circle
     queue<ArrayCoordinate> q;
-    ArrayCoordinate interior_point_full = {interior_point.row+offset.row, interior_point.col+offset.col,offset.origin};
+    ArrayCoordinate interior_point_full = convert_coordinates(convert_coordinates(interior_point), big_model_origin);
     q.push(interior_point_full);
     while (!q.empty()) {
       ArrayCoordinate p = q.front();
@@ -357,10 +372,14 @@ void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model
 
         ArrayCoordinate neighbor = {p.row+directions[d].row, p.col+directions[d].col, p.origin};
 
-        if (full_cur_model->get(neighbor.row, neighbor.col) == 1)
-            continue;
+        if (full_cur_model != NULL){
+            if (full_cur_model->get(neighbor.row, neighbor.col) == 1)
+                continue;
 
-        full_cur_model->set(neighbor.row, neighbor.col, 1);
+            full_cur_model->set(neighbor.row, neighbor.col, 1);
+        }
+
+        temp_used_points.push_back(neighbor);        
         q.push(neighbor);
       }
     }

@@ -45,6 +45,6 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM);
 Circle welzl_algorithm(std::vector<ArrayCoordinate> &region_points, std::vector<ArrayCoordinate> outside_points, uint remaining_points, GeographicCoordinate origin);
 Circle find_minimum_enclosing_circle(std::vector<ArrayCoordinate> &region_points);
 bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoordinate> &individual_turkey_region, Model<short> *DEM, TurkeyCharacteristics &turkey, bool flat_check);
-void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset);
+void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset, std::vector<ArrayCoordinate> &temp_used_points, GeographicCoordinate big_model_origin);
 
 #endif

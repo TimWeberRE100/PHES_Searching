@@ -904,12 +904,6 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 					
 					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
 
-					// If the TN pour_point is within the border, skip modelling.
-					// Prevents overlap between pits of different grid-squares
-					if(DEM->check_within_border(turkey.centre_point.row, turkey.centre_point.col)){
-						continue;
-					}
-						
 					if(model_check)
 						res_count++;
 					else{
@@ -941,12 +935,6 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 				turkey.identifier = str(search_config.grid_square) + "_TURKEYD" + str(i);
 				
 				bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, false);
-				
-				// If the TN pour_point is within the border, skip modelling.
-				// Prevents overlap between pits of different grid-squares
-				if(DEM->check_within_border(turkey.centre_point.row, turkey.centre_point.col)){
-					continue;
-				}
 
 				if(!model_check)
 					continue;

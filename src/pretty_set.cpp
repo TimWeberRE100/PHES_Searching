@@ -2,7 +2,7 @@
 #include "search_config.hpp"
 #include "constructor_helpers.hpp"
 
-bool check_pair(Pair &pair, Model<bool> *seen, BigModel &big_model, set<string>& used_with_river) {
+bool check_pair(Pair &pair, Model<bool> *seen, Model<bool> *seen_tn, BigModel &big_model, set<string>& used_with_river) {
   vector<vector<vector<vector<GeographicCoordinate>>>> empty_countries;
   vector<string> empty_country_names;
   vector<ArrayCoordinate> used_points;
@@ -11,11 +11,11 @@ bool check_pair(Pair &pair, Model<bool> *seen, BigModel &big_model, set<string>&
   if(pair.lower.river && !use_tiled_rivers)
     return false;
   if (!pair.upper.brownfield && !pair.upper.turkey &&
-      !model_reservoir(&pair.upper, NULL, seen, NULL, &used_points, big_model, NULL,
+      !model_reservoir(&pair.upper, NULL, seen, NULL, NULL, &used_points, big_model, NULL,
                        empty_countries, empty_country_names))
     return false;
   if (!pair.lower.brownfield && !pair.lower.ocean && !pair.lower.turkey &&
-      !model_reservoir(&pair.lower, NULL, seen, NULL, &used_points, big_model, NULL,
+      !model_reservoir(&pair.lower, NULL, seen, NULL, NULL, &used_points, big_model, NULL,
                        empty_countries, empty_country_names))
     return false;
 
@@ -33,6 +33,16 @@ bool check_pair(Pair &pair, Model<bool> *seen, BigModel &big_model, set<string>&
   }
   if(pair.lower.river)
     used_with_river.insert(pair.upper.identifier);
+
+  if(pair.upper.turkey)
+	if(!model_from_shapebound(&pair.upper, NULL,
+                              empty_countries, empty_country_names, NULL, big_model, &used_points, seen, seen_tn, NULL))
+		return false;
+
+  if(pair.lower.turkey)
+	if(!model_from_shapebound(&pair.lower, NULL,
+                              empty_countries, empty_country_names, NULL, big_model, &used_points, seen, seen_tn, NULL))
+		return false;
 
   return true;
 }
@@ -76,6 +86,9 @@ int main(int nargs, char **argv)
 		Model<bool>* seen = new Model<bool>(big_model.DEM->nrows(), big_model.DEM->nrows(), MODEL_SET_ZERO);
 		seen->set_geodata(big_model.DEM->get_geodata());
 
+		Model<bool>* seen_tn = new Model<bool>(big_model.DEM->nrows(), big_model.DEM->nrows(), MODEL_SET_ZERO);
+		seen_tn->set_geodata(big_model.DEM->get_geodata());
+
 		if(search_config.search_type.single()){
 			ExistingReservoir r = get_existing_reservoir(search_config.name);
 			polygon_to_raster(r.polygon, seen);
@@ -83,11 +96,12 @@ int main(int nargs, char **argv)
 
 		int count = 0;
 		for(uint j=0; j<pairs[i].size(); j++){
-			if(check_pair(pairs[i][j], seen, big_model, used_with_river)){
+			if(check_pair(pairs[i][j], seen, seen_tn, big_model, used_with_river)){
 				write_rough_pair_data(csv_data_file, &pairs[i][j]);
 				count++;
 			}
 		}
+		delete seen_tn;
 		delete seen;
 		search_config.logger.debug(to_string(count) + " " + to_string(tests[i].energy_capacity) + "GWh "+to_string(tests[i].storage_time) + "h Pairs");
 	}

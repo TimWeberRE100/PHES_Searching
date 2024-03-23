@@ -61,7 +61,7 @@ int main(int nargs, char **argv) {
       reservoir->dam_height = atoi(argv[4]);
       Reservoir_KML_Coordinates *coordinates = new Reservoir_KML_Coordinates();
 
-      model_reservoir(reservoir, coordinates, NULL, NULL, NULL, big_model,
+      model_reservoir(reservoir, coordinates, NULL, NULL, NULL, NULL, big_model,
                       full_cur_model, countries, country_names);
 
       kml_file << output_kml(reservoir, *coordinates);
