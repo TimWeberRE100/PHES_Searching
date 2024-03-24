@@ -11,7 +11,7 @@
 double depression_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<ArrayCoordinate> &interconnected_points){
     double interconnected_area = 0;
 
-    // Find all cells interconnected within the region add them to the interonnected_flat_points vector
+    // Find all cells interconnected within the region add them to the interonnected_points vector
 	ArrayCoordinate c = {row,col,turkey_mask->get_origin()};
 	queue<ArrayCoordinate> q;
 	q.push(c);
@@ -44,7 +44,7 @@ double depression_mask_area_calculator(int row, int col, Model<bool> *turkey_mas
 	return interconnected_area;
 }
 
-double flat_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<std::vector<ArrayCoordinate>> &fishnet_polygons, std::vector<double> &individual_region_areas){
+double flat_mask_area_calculator(Model<bool> *turkey_mask, Model<bool> *seen, std::vector<std::vector<ArrayCoordinate>> &fishnet_regions, std::vector<double> &individual_region_areas){
     double interconnected_area = 0;
     
     // Fishnet the interconnected flat mask
@@ -97,7 +97,7 @@ double flat_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Mod
             }
 
             individual_region_areas.push_back(flat_area);
-            fishnet_polygons.push_back(flat_polygon);
+            fishnet_regions.push_back(flat_polygon);
         }
     }
     
@@ -144,7 +144,6 @@ void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM){
         if(dam_wall_heights[dam_height_i] > max_turkey_dam_height)
             continue;
 
-        ////// COMPARE DAM VOLUME CALCULATED HERE WITH THAT IN CONSTRUCTOR
         // Determine maximum dam top elevation
         int max_dam_top_elevation = lowest_dam_elevation + dam_wall_heights[dam_height_i];
         
@@ -284,7 +283,6 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
         reference_point = find_minimum_enclosing_circle(individual_turkey_region);
 	}
 
-    //printf("seg1.2 %d %d\n",reference_point.centre_point.row, reference_point.centre_point.col);
     if(!DEM->check_within(reference_point.centre_point.row, reference_point.centre_point.col))
         return false;
     
@@ -345,11 +343,10 @@ bool model_turkey_nest(FILE *csv_file, FILE *csv_data_file, std::vector<ArrayCoo
 
 void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model<char>* full_cur_model, ArrayCoordinate interior_point, ArrayCoordinate offset, std::vector<ArrayCoordinate> &temp_used_points, GeographicCoordinate big_model_origin) {    
     // Find outline of circle
-    //printf("START: %.2f %.2f %d\n", big_model_origin.lat, big_model_origin.lon, int(reservoir_polygon.size()));
     for (ArrayCoordinate point : reservoir_polygon) {
         ArrayCoordinate big_ac = convert_coordinates(convert_coordinates(point), big_model_origin);
         temp_used_points.push_back(big_ac);
-        //printf("Test: %d %d, %d %d", big_ac.row, big_ac.col, point.row+offset.row, point.col+offset.col);
+        
         if (full_cur_model != NULL)
             full_cur_model->set(point.row+offset.row, point.col+offset.col, 1);
     }

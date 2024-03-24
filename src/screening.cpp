@@ -882,19 +882,20 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 			// Model turkey nests on flat land
 			if ((turkey_flat_mask->get(row,col)) && (!seen_f->get(row,col))) {
 				// Locate flat region based upon interconnected cells on the mask
-				std::vector<std::vector<ArrayCoordinate>> interconnected_flat_points;
+				// Fishnet the flat area if it is large
+				std::vector<std::vector<ArrayCoordinate>> fishnet_regions;
 				std::vector<double> individual_region_areas;
-				double interconnected_flat_area = flat_mask_area_calculator(row, col, turkey_flat_mask, seen_f, interconnected_flat_points, individual_region_areas);
+				double interconnected_flat_area = flat_mask_area_calculator(turkey_flat_mask, seen_f, fishnet_regions, individual_region_areas);
 				
 				if (interconnected_flat_area < min_watershed_area){
 					continue;
 				}
 
-				for(uint i=0; i<interconnected_flat_points.size();i++) {
+				for(uint i=0; i<fishnet_regions.size();i++) {
 					if (individual_region_areas[i] < min_watershed_area)
 						continue;
 
-					std::vector<ArrayCoordinate> individual_turkey_region = interconnected_flat_points[i];
+					std::vector<ArrayCoordinate> individual_turkey_region = fishnet_regions[i];
 
 					TurkeyCharacteristics turkey(individual_turkey_region[0].row,individual_turkey_region[0].col,DEM->get_origin());
 

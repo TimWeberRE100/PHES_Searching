@@ -759,15 +759,15 @@ std::string url_encode(const std::string &value) {
 
 std::string generate_map_url(Pair* pair) {
     std::string atlas_type;    
-    if ((pair->upper.brownfield || pair->lower.brownfield) && (!pair->upper.pit && !pair->lower.pit) && (!pair->upper.river && !pair->lower.river)){
+    if (search_config.search_type == SearchType::BULK_EXISTING){
       atlas_type = convert_string("Bluefield");
-    } else if (pair->upper.pit || pair->lower.pit){
+    } else if (search_config.search_type == SearchType::BULK_PIT){
       atlas_type = convert_string("Brownfield");
-    } else if (pair->upper.river || pair->lower.river){
+    } else if (search_config.search_type == SearchType::RIVER){
       atlas_type = convert_string("Seasonal");
-    } else if (pair->lower.ocean){
+    } else if (search_config.search_type == SearchType::OCEAN){
       atlas_type = convert_string("Ocean");
-    } else if (pair->upper.turkey || pair->lower.turkey) {
+    } else if (search_config.search_type == SearchType::TURKEY) {
       atlas_type = convert_string("Turkey's Nest");
     }else {
       atlas_type = convert_string("Greenfield");
@@ -810,19 +810,11 @@ std::string generate_map_url(Pair* pair) {
                 "\"terrainSplitDirection\":0,"
                 "\"depthTestAgainstTerrainEnabled\":false"
             "}"
-            /* "\"pickedFeatures\":{"
-                "\"providerCoords\":{\"https://re100.anu.edu.au/geoserver/global_greenfield/wms\":{\"x\":14063,\"y\":6169,\"level\":14}},"
-                "\"pickCoords\":{\"lat\":"+dtos(latitude,14)+",\"lng\":"+dtos(longitude,14)+",\"height\":0},"
-                "\"current\":{\"name\":\""+siteId+"\",\"hash\":19486325717},"
-                "\"entities\":[]"
-            "}" */
         "}]"
     "}";
 
     std::string encoded_json = url_encode(json_structure);
     std::string generated_url = base_url + encoded_json;
-
-    //std::cout << generatedUrl << "\n";
 
     return generated_url;
 }

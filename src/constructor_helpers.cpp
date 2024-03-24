@@ -274,7 +274,7 @@ vector<ArrayCoordinate> order_polygon(vector<ArrayCoordinate> unordered_edge_poi
         bool found_path = false;
         for (uint d=0; d<directions.size(); d++) {
             ArrayCoordinate next = ArrayCoordinate_init(last.row+directions[d].row,last.col+directions[d].col, unordered_edge_points[0].origin);
-            //printf("Initial, %i %i Next: %i %i Size: %i %i\n", initial.row, initial.col, next.row, next.col, (int)to_return.size(), (int)unordered_edge_points.size());
+            
             if(std::find(unordered_edge_points.begin(), unordered_edge_points.end(), next) != unordered_edge_points.end()){
                 found_path = true;
                 to_return.push_back(next);
@@ -405,7 +405,6 @@ bool model_dam_wall(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinates
     }
   }
 
-  //full_cur_model->write("out2.tif", GDT_Byte);
   if (polygon_bool[0] && polygon_bool[dam_polygon.size() - 1] &&
       !is_turkeys_nest && dam_polygon.size() > 1) {
     for (uint i = 0; i < dam_polygon[dam_polygon.size() - 1].size(); i++) {
@@ -589,7 +588,6 @@ bool model_reservoir(Reservoir *reservoir, Reservoir_KML_Coordinates *coordinate
   reservoir_polygon = convert_to_polygon(full_cur_model, offset, reservoir->pour_point, 1);
   reservoir->reservoir_polygon = reservoir_polygon;
 
-  // full_cur_model->write("out1.tif", GDT_Byte);
   // DAM WALL
   model_dam_wall(reservoir, coordinates, DEM, reservoir_polygon, full_cur_model, offset);
 
@@ -625,32 +623,27 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
                      vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model, std::vector<ArrayCoordinate> *used_points, Model<bool> *seen, Model<bool> *seen_tn, bool *non_overlap) {
-  //printf("Success 2\n");
   string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation + reservoir->fill_depth);
   
   if (coordinates != NULL)
     coordinates->reservoir = polygon_string;
 
   reservoir->reservoir_polygon = reservoir->shape_bound;
-  //printf("Success 2.1\n");
   reservoir->country = find_country(GeographicCoordinate_init(reservoir->latitude, reservoir->longitude), countries, country_names);
-  //printf("Success 2.2\n");
-  //printf("Res size: %i %i %i\n", (int)reservoir->shape_bound.size(), reservoir->shape_bound[0].row, reservoir->shape_bound[0].col);
-
+  
   if (reservoir->turkey){
     Model<short> *DEM = big_model.DEM;
     Model<char> *flow_directions = big_model.flow_directions[0];
-    //printf("Success 2.3\n");
+    
     ArrayCoordinate offset = convert_coordinates(
       convert_coordinates(ArrayCoordinate_init(0, 0, flow_directions->get_origin())),
       DEM->get_origin());
-    //printf("Success 2.4\n");
+    
     // Flood algorithm for reservoir full_cur_model
     std::vector<ArrayCoordinate> temp_used_points;
     temp_used_points.clear();
     turkey_reservoir_fill(reservoir->reservoir_polygon, full_cur_model, reservoir->pour_point, offset, temp_used_points, big_model.DEM->get_origin());
     
-    //printf("Success 2.5\n");
     if (used_points != NULL)
       for (uint i = 0; i < temp_used_points.size(); i++) {
         if (seen != NULL && seen->get(temp_used_points[i].row, temp_used_points[i].col)){
@@ -667,7 +660,7 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
       if (used_points != NULL)
         used_points->push_back(temp_used_points[i]);
 
-      if (seen != NULL && non_overlap != NULL){
+      if (seen != NULL){
         seen->set(temp_used_points[i].row, temp_used_points[i].col, true);
       }
 
@@ -675,13 +668,12 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
         seen_tn->set(temp_used_points[i].row, temp_used_points[i].col, true);
       }
     }
-    //printf("Success 2.6\n");
+    
     if (coordinates == NULL)
       return true;
-    //printf("Success 1\n");
 
     vector<ArrayCoordinate> reservoir_polygon = convert_to_polygon(full_cur_model, offset, reservoir->reservoir_polygon[0], 1);
-    //printf("Success 4\n");
+    
     model_dam_wall(reservoir, coordinates, DEM, reservoir_polygon, full_cur_model, offset);
 
     string polygon_string =
@@ -710,7 +702,6 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
       }
     }
   }
-  //printf("Success 3\n");
   return true;
 }
 

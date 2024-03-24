@@ -19,8 +19,6 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen, Model<bool> *
   vector<ArrayCoordinate> used_points;
   *non_overlap = true;
 
-  //printf("IDs: %s %s\n", pair->upper.identifier.c_str(), pair->lower.identifier.c_str());
-
   // Remove pairs not within grid_square. Required for overlap analysis of existing reservoirs/pits
   if(search_config.search_type.existing()){
     if((pair->upper.brownfield && !check_within(convert_coordinates(pair->upper.pour_point), search_config.grid_square)) || (pair->lower.brownfield && !check_within(convert_coordinates(pair->lower.pour_point), search_config.grid_square)))
@@ -152,7 +150,6 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen, Model<bool> *
       seen_ids.push_back(pair->upper.identifier);
     }
   }
-  // REMOVE OVERLAPPING RIVER SITES - ONLY 1 SITE PER RIVER. PERHAPS GO BY RIVER ID? HOW TO MANAGE BETWEEN DIFFERENT GRID SQUARES?
 
   if (*non_overlap) {
     for (uint i = 0; i < used_points.size(); i++) {
@@ -291,33 +288,33 @@ int main(int nargs, char **argv)
           }
         }
 
-      // Mark non-Greenfield reservoir locations as seen
-      ArrayCoordinate offset = convert_coordinates(convert_coordinates(ArrayCoordinate_init(0, 0, big_model.flow_directions[0]->get_origin())), big_model.DEM->get_origin());
-      for(uint j=0; j<pairs[i].size(); j++){
-        if (pairs[i][j].upper.brownfield || pairs[i][j].upper.turkey){
-          for (ArrayCoordinate point : pairs[i][j].upper.reservoir_polygon) {
-            ArrayCoordinate big_ac = {point.row + offset.row, point.col + offset.col, offset.origin};
-            seen_tn->set(big_ac.row, big_ac.col, true);
+        // Mark non-Greenfield reservoir locations as seen
+        ArrayCoordinate offset = convert_coordinates(convert_coordinates(ArrayCoordinate_init(0, 0, big_model.flow_directions[0]->get_origin())), big_model.DEM->get_origin());
+        for(uint j=0; j<pairs[i].size(); j++){
+          if (pairs[i][j].upper.brownfield || pairs[i][j].upper.turkey){
+            for (ArrayCoordinate point : pairs[i][j].upper.reservoir_polygon) {
+              ArrayCoordinate big_ac = {point.row + offset.row, point.col + offset.col, offset.origin};
+              seen_tn->set(big_ac.row, big_ac.col, true);
+            }
+
+            for (ArrayCoordinate point : pairs[i][j].upper.shape_bound) {
+              ArrayCoordinate big_ac = convert_coordinates(convert_coordinates(point), offset.origin);
+              seen_tn->set(big_ac.row, big_ac.col, true);
+            }
           }
 
-          for (ArrayCoordinate point : pairs[i][j].upper.shape_bound) {
-            ArrayCoordinate big_ac = convert_coordinates(convert_coordinates(point), offset.origin);
-            seen_tn->set(big_ac.row, big_ac.col, true);
+          if (pairs[i][j].lower.brownfield || pairs[i][j].lower.turkey) {
+            for (ArrayCoordinate point : pairs[i][j].lower.reservoir_polygon) {
+              ArrayCoordinate big_ac = {point.row + offset.row, point.col + offset.col, offset.origin};
+              seen_tn->set(big_ac.row, big_ac.col, true);
+            }			
+
+            for (ArrayCoordinate point : pairs[i][j].lower.shape_bound) {
+              ArrayCoordinate big_ac = convert_coordinates(convert_coordinates(point), offset.origin);
+              seen_tn->set(big_ac.row, big_ac.col, true);
+            }		
           }
         }
-
-        if (pairs[i][j].lower.brownfield || pairs[i][j].lower.turkey) {
-          for (ArrayCoordinate point : pairs[i][j].lower.reservoir_polygon) {
-            ArrayCoordinate big_ac = {point.row + offset.row, point.col + offset.col, offset.origin};
-            seen_tn->set(big_ac.row, big_ac.col, true);
-          }			
-
-          for (ArrayCoordinate point : pairs[i][j].lower.shape_bound) {
-            ArrayCoordinate big_ac = convert_coordinates(convert_coordinates(point), offset.origin);
-            seen_tn->set(big_ac.row, big_ac.col, true);
-          }		
-        }
-      }
 
         FILE *csv_file_classes = fopen(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".csv"), "w");
         write_pair_csv_header(csv_file_classes, false);
@@ -355,62 +352,7 @@ int main(int nargs, char **argv)
                       total_capacity+=tests[i].energy_capacity;
                   }
             }
-        }
-
-        /* // NEED TO MODEL PAIR
-
-        // Keep the cheapest Turkey's Nest pair for each site
-        if (search_config.search_type == SearchType::TURKEY) {
-          while (!pairs[i].empty()) {
-            std::vector<Pair> temp_pairs;
-            std::string turkey_identifier;
-            Pair cheapest_pair = pairs[i][0];
-
-            if (pairs[i][0].upper.turkey)
-              turkey_identifier = pairs[i][0].upper.identifier;
-            else if (pairs[i][0].lower.turkey)
-              turkey_identifier = pairs[i][0].lower.turkey;
-            else {
-              printf("Turkey's nest constructor contained non-turkey pair.\n");
-              exit(1);
-            }
-
-            pairs[i].erase(
-                std::remove_if(pairs[i].begin()+1, pairs[i].end(),
-                    [&](const Pair& pair) {
-                        if (pair.upper.identifier == turkey_identifier || pair.lower.identifier == turkey_identifier) {
-                            temp_pairs.push_back(pair);
-                            return true;
-                        }
-                        return false;
-                    }),
-                pairs[i].end()            
-            );
-
-            for (Pair pair : temp_pairs) {
-              if (pair.FOM < cheapest_pair.FOM)
-                cheapest_pair = pair;
-            }
-
-            write_pair_csv(csv_file_classes, &cheapest_pair, false);
-            write_pair_csv(csv_file_FOM, &cheapest_pair, true);
-                  
-            keep_lower = !lowers.contains(cheapest_pair.lower.identifier);
-            keep_upper = !uppers.contains(cheapest_pair.upper.identifier);
-            lowers.insert(cheapest_pair.lower.identifier);
-            uppers.insert(cheapest_pair.upper.identifier);
-                  
-            update_kml_holder(&kml_holder, &cheapest_pair, &pair_kml, keep_upper, keep_lower);
-            count++;
-            if(non_overlap){
-              non_overlapping_count++;
-              total_count++;
-              total_capacity+=tests[i].energy_capacity;
-            } 
-
-          }
-        }*/
-        
+        }        
 
         kml_file_classes << output_kml(&kml_holder, search_config.filename(), tests[i]);
         kml_file_FOM << output_kml(&kml_holder, search_config.filename(), tests[i]);
@@ -424,11 +366,6 @@ int main(int nargs, char **argv)
                         non_overlapping_count, count, count*tests[i].energy_capacity);
       write_summary_csv(total_csv_file_FOM, str(search_config.grid_square), str(tests[i]),
                         non_overlapping_count, count, count*tests[i].energy_capacity);
-
-      /* if (tests[i].energy_capacity==150){
-        seen_tn->write(to_string(98)+"dump.tif", GDT_Byte);
-        exit(1);//DEBUG
-      } */
     }
     write_summary_csv(total_csv_file_classes, str(search_config.grid_square), "TOTAL", total_count, -1, total_capacity);
     write_summary_csv(total_csv_file_FOM, str(search_config.grid_square), "TOTAL", total_count, -1, total_capacity);

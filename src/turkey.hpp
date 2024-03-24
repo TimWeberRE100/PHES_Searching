@@ -39,7 +39,7 @@ struct TurkeyCharacteristics {
 };
 
 double depression_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<ArrayCoordinate> &interconnected_points);
-double flat_mask_area_calculator(int row, int col, Model<bool> *turkey_mask, Model<bool> *seen, std::vector<std::vector<ArrayCoordinate>> &interconnected_points, std::vector<double> &individual_region_areas);
+double flat_mask_area_calculator(Model<bool> *turkey_mask, Model<bool> *seen, std::vector<std::vector<ArrayCoordinate>> &fishnet_regions, std::vector<double> &individual_region_areas);
 Model<bool>* find_flat_land(Model<float> *DEM, Model<bool> *filter, int maximum_slope);
 void update_turkey_volumes(TurkeyCharacteristics &turkey, Model<short> *DEM);
 Circle welzl_algorithm(std::vector<ArrayCoordinate> &region_points, std::vector<ArrayCoordinate> outside_points, uint remaining_points, GeographicCoordinate origin);
