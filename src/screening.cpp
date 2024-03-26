@@ -52,6 +52,12 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
 			// Exclude urban filter from bulk_pit searches - some pits (such as Kalgoorlie Super Pit) are right next to urban areas. Mining tenament mask is more accurate at preventing overlap with urban area
 			if (search_config.search_type == SearchType::BULK_PIT)
 				continue;
+
+			// World urban raster for high latitudes has a different shape and will cause segmentation fault
+			// Very tiny population in these latitudes, so just skip filter
+			if (DEM->get_origin().lat > 70.0)
+				continue;
+
 			search_config.logger.debug("Using world urban data as filter");
 			vector<string> done;
 			for(GeographicCoordinate corner: DEM->get_corners()){
