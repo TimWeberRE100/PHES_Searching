@@ -82,7 +82,7 @@ void read_shp_filter(string filename, Model<bool>* filter){
 std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_points, bool add_border){
 	std::vector<ArrayCoordinate> edge_points;
 
-	if (polygon_points.size() <= 4) {
+	if ((polygon_points.size() <= 4) && !add_border) {
 		edge_points = polygon_points;
 		return edge_points;
 	}

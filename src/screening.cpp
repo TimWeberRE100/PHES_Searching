@@ -793,7 +793,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				pit.res_identifier = str(search_config.grid_square) + "_PITD" + str(i);
 			
 			// Find polygon for the combined depression/pit lake
-			pit.brownfield_polygon = convert_poly(order_polygon(find_edge(individual_pit_points, true)));
+			pit.brownfield_polygon = convert_poly(order_polygon(find_edge(individual_pit_points, true)), 0.5);
 			
 			if(debug_output){
 				for (ArrayCoordinate point : individual_pit_points)
