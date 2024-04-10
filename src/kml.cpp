@@ -118,6 +118,10 @@ string get_html(Pair* pair){
 				(pair->lower.pit ? 
 "			   <tr><td>Lower Pit Depth Fluctuation (m)</td><td>"+dtos(pair->lower.fill_depth,0)+"</td></tr>"+newline+
 "			   <tr bgcolor=\"#D4E4F3\"><td>Lower Pit MOL (m)</td><td>"+dtos(pair->lower.elevation,0)+"</td></tr>"+newline : " ") +
+				(pair->upper.brownfield == 1 ? 
+"			   <tr><td>Upper Lake Depth Fluctuation (m)</td><td>"+dtos(pair->upper.fill_depth_from_MOL,0)+"</td></tr>"+newline+ : " ") +
+				(pair->lower.brownfield == 1 ? 
+"			   <tr><td>Lower Lake Depth Fluctuation (m)</td><td>"+dtos(pair->lower.fill_depth_from_MOL,0)+"</td></tr>"+newline+ : " ") +
 "              <tr><td>Country</td><td>"+pair->country+"</td></tr>"+newline+
 "              </table>"+newline+
 "              </body>"+newline+

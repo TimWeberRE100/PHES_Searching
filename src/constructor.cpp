@@ -80,11 +80,11 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen, Model<bool> *
 
   // Add estimated depth fluctuation to bluefield
   if (pair->upper.brownfield == 1){
-    pair->upper.fill_depth_from_MOL = estimate_existing_depth_fluctuation(pair->volume, pair->upper.reservoir_polygon, big_model, pair->upper.depth);
+    pair->upper.fill_depth_from_MOL = estimate_existing_depth_fluctuation(pair->volume, pair->upper, big_model);
   }
-  /* if (pair->lower.brownfield == 1){
-    pair->lower.fill_depth_from_MOL = 
-  } */
+  if (pair->lower.brownfield == 1){
+    pair->lower.fill_depth_from_MOL = estimate_existing_depth_fluctuation(pair->volume, pair->lower, big_model);
+  }
   
   // Check overlap between reservoirs during pit and existing reservoir constructor
   if ((pair->upper.brownfield || pair->lower.brownfield) && !pair->upper.river && !pair->lower.river) {
