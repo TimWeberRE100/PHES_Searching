@@ -251,6 +251,8 @@ void set_FOM(Pair* pair){
 	}	
 
 	pair->FOM = power_cost+energy_cost*pair->storage_time;
+	pair->energy_cost = energy_cost;
+	pair->power_cost = power_cost;
 
 	//std::cout << head << " " << power << " " << power_house_cost << " " << tunnel_cost << " " << power_cost << " " << energy_cost << " " << energy_cost*pair->storage_time << " " << pair->FOM << "\n";
 

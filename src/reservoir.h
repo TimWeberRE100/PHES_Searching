@@ -138,6 +138,8 @@ struct Pair {
   double required_volume;
   double volume;
   double FOM;
+  double energy_cost;
+  double power_cost;
   char category;
   double water_rock;
   double fill_depth;

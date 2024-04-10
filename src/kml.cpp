@@ -267,6 +267,12 @@ string get_attributes(Pair* pair){
 "          <Data name=\"Country\">\n"
 "            <value>"+pair->country+"</value>\n"
 "          </Data>\n"
+"          <Data name=\"Energy_cost\">\n"
+"            <value>"+dtos(pair->energy_cost, 1)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Power_cost\">\n"
+"            <value>"+dtos(pair->power_cost, 1)+"</value>\n"
+"          </Data>\n"
 "       </ExtendedData>\n";
 }
 
