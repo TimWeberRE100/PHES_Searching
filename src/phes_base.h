@@ -72,6 +72,7 @@ extern vector<double> dam_wall_heights; //  Wall heights to test and export
 
 extern int depression_depth_min; // Minimum depth of depressions (m) for mining pit and turkey's nest screenings
 extern double pit_lake_relative_depth;  // Pit lakes typically have a relative depth (maximum depth : diameter of circle with surface area) of between 10% - 40%
+extern double existing_relative_depth;
 
 extern int max_turkey_area;  // Maximum area (ha) of a turkey nest screening polygon
 extern int max_turkey_slope;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening

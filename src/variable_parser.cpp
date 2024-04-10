@@ -39,6 +39,7 @@ vector<double> dam_wall_heights; 	//  Wall heights to test and export
 
 int depression_depth_min;			// Minimum depth of depressions (m) for mining pit and turkey's nest screenings
 double pit_lake_relative_depth;  // Pit lakes typically have a relative depth (maximum depth : diameter of circle with surface area) of between 10% - 40%
+double existing_relative_depth;
 
 int max_turkey_area;  // Maximum area (ha) of a turkey nest screening polygon
 int max_turkey_slope;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
@@ -129,6 +130,8 @@ void parse_variables(char* filename){
 				depression_depth_min = stoi(value);
 			if(variable=="pit_lake_relative_depth")
 				pit_lake_relative_depth = stod(value);
+			if(variable=="double existing_relative_depth"):
+				existing_relative_depth = stod(value);
 			if(variable=="max_turkey_area")
 				max_turkey_area = stoi(value);
 			if(variable=="max_turkey_slope")

@@ -5,6 +5,7 @@
 #include "mining_pits.h"
 #include "model2D.h"
 #include "phes_base.h"
+#include "reservoir.h"
 
 /*
  * Returns sorted vector containing the longitude of all polgon boundary interections at certain
@@ -736,4 +737,40 @@ bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* c
     reservoir->country = find_country(GeographicCoordinate_init(reservoir->latitude, reservoir->longitude), countries, country_names);
   }
   return true;
+}
+
+double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reservoir, BigModel big_model){
+  // Polygon to raster
+  Model<char> *full_cur_model = new Model<char>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);
+  full_cur_model->set_geodata(big_model.DEM->get_geodata());
+
+  std::vector<GeographicCoordinate> reservoir_polygon_gc = convert_coordinates(reservoir.reservoir_polygon);
+
+  polygon_to_raster(reservoir_polygon_gc, full_cur_model);
+
+  full_cur_model->write(to_string(80)+"dump.tif", GDT_Byte); // DEBUG
+  
+  // Fill the reservoir polygon
+  //turkey_reservoir_fill(reservoir.reservoir_polygon, full_cur_model, reservoir.pour_point, offset, temp_used_points, big_model.DEM->get_origin());
+
+  // Find pole of inaccessibility
+  Circle pole_of_inaccess = find_pole_of_inaccessibility(reservoir.reservoir_polygon);
+  
+  // Estimate maximum depth
+  double max_depth = existing_relative_depth * pole_of_inaccess.radius;
+
+  // Lake volumes are calculated by assuming that they are conical structures
+	// Find height of cone with lake surface as base
+	double lake_surface_r = sqrt(10000*reservoir.area / pi); // Area from Ha to m^2
+
+	// Volume below MOL given by smaller cone contained within the larger cone
+  // Depth below MOL determined from similar triangles
+  // V_belowMOL + V_usable = V_reservoir -> h_belowMOL = 3*(V_reservoir - V_usable) / (pi * h_belowMOL^2) ... (1)
+  // r_reservoir / h_reservoir = r_belowMOL / h_belowMOL ... (2)
+
+  double depth_below_MOL = max(0,pow(3*(reservoir.volume - usable_volume)*max_depth*max_depth/(lake_surface_r*lake_surface_r),1/3));
+
+  delete full_cur_model;
+
+  return max_depth - depth_below_MOL;
 }
