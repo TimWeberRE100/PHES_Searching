@@ -130,7 +130,7 @@ void parse_variables(char* filename){
 				depression_depth_min = stoi(value);
 			if(variable=="pit_lake_relative_depth")
 				pit_lake_relative_depth = stod(value);
-			if(variable=="double existing_relative_depth"):
+			if(variable=="existing_relative_depth")
 				existing_relative_depth = stod(value);
 			if(variable=="max_turkey_area")
 				max_turkey_area = stoi(value);

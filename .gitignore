@@ -15,6 +15,10 @@ compile_commands.json
 variables
 tools/raster_to_csv.py
 tools/DEM_arrays
-preprocessing_files/*
+preprocessing_files
 __pycache__/
 Results
+processing_files_ANNA
+task_lists
+!task_lists/world_tasks_fabdem.txt
+!task_lists/world_tasks_srtm.txt

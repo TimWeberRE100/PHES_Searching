@@ -33,4 +33,5 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model, std::vector<ArrayCoordinate> *used_points, Model<bool> *seen, Model<bool> *seen_tn, bool *non_overlap);
 bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* coordinates, vector<vector<vector<vector<GeographicCoordinate>>>>& countries, vector<string>& country_names);
+double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reservoir, BigModel big_model);
 #endif

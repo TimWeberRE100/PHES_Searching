@@ -741,20 +741,46 @@ bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* c
 
 double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reservoir, BigModel big_model){
   // Polygon to raster
-  Model<char> *full_cur_model = new Model<char>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);
-  full_cur_model->set_geodata(big_model.DEM->get_geodata());
+  Model<bool> *bluefield_mask = new Model<bool>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);
+  bluefield_mask->set_geodata(big_model.DEM->get_geodata());
 
-  std::vector<GeographicCoordinate> reservoir_polygon_gc = convert_coordinates(reservoir.reservoir_polygon);
-
-  polygon_to_raster(reservoir_polygon_gc, full_cur_model);
-
-  full_cur_model->write(to_string(80)+"dump.tif", GDT_Byte); // DEBUG
+  std::vector<ArrayCoordinate> filled_reservoir_poly;
   
-  // Fill the reservoir polygon
-  //turkey_reservoir_fill(reservoir.reservoir_polygon, full_cur_model, reservoir.pour_point, offset, temp_used_points, big_model.DEM->get_origin());
+  std::vector<GeographicCoordinate> reservoir_polygon_gc = convert_poly(reservoir.shape_bound);
+  polygon_to_raster(reservoir_polygon_gc,bluefield_mask);
+  //bluefield_mask->write(to_string(80)+"dump.tif", GDT_Byte); // DEBUG
 
+  queue<ArrayCoordinate> q;
+  for (GeographicCoordinate gc : reservoir_polygon_gc) {
+    ArrayCoordinate ac = convert_coordinates(gc,bluefield_mask->get_origin());
+    q.push(ac);
+  }
+
+  while (!q.empty()) {
+      ArrayCoordinate p = q.front();
+      q.pop();
+
+      if (!bluefield_mask->check_within(p.row,p.col))
+        continue;
+
+      if (!bluefield_mask->get(p.row,p.col))
+        continue;
+
+      filled_reservoir_poly.push_back(p);
+      bluefield_mask->set(p.row,p.col,false);
+
+      for (uint d=0; d<directions.size(); d++) {
+        if (directions[d].row * directions[d].col != 0)
+          continue;	
+
+        ArrayCoordinate neighbor = {p.row+directions[d].row, p.col+directions[d].col, p.origin};
+  
+        q.push(neighbor);
+    }
+  }
+  
   // Find pole of inaccessibility
-  Circle pole_of_inaccess = find_pole_of_inaccessibility(reservoir.reservoir_polygon);
+  Circle pole_of_inaccess = find_pole_of_inaccessibility(filled_reservoir_poly);
   
   // Estimate maximum depth
   double max_depth = existing_relative_depth * pole_of_inaccess.radius;
@@ -768,9 +794,9 @@ double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reser
   // V_belowMOL + V_usable = V_reservoir -> h_belowMOL = 3*(V_reservoir - V_usable) / (pi * h_belowMOL^2) ... (1)
   // r_reservoir / h_reservoir = r_belowMOL / h_belowMOL ... (2)
 
-  double depth_below_MOL = max(0,pow(3*(reservoir.volume - usable_volume)*max_depth*max_depth/(lake_surface_r*lake_surface_r),1/3));
+  double depth_below_MOL = max(0.0,pow(3*1000000*(reservoir.volume - usable_volume)*max_depth*max_depth/(pi*lake_surface_r*lake_surface_r),1/3.)); // GL to m^3
 
-  delete full_cur_model;
+  delete bluefield_mask;
 
-  return max_depth - depth_below_MOL;
+  return max(max_depth - depth_below_MOL,1.0);
 }
