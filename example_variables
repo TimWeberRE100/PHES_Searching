@@ -6,6 +6,7 @@ existing_reservoirs_shp = US/230306/Bluefield.shp;
 existing_reservoirs_shp_names = US/230306/names.csv;
 use_tiled_bluefield = 1;  // 0 for false, 1 for true
 use_tiled_rivers = 0;  // 0 for false, 1 for true (if true, above shps are ignored)
+use_protected_areas = 0; // 0 to include protected areas in filter, 1 to include non-protected areas in the filter
 
 // GPKG Tiling
 gpkg_path = preprocessing_files/brownfield/global_mining_tenements.gpkg;       // Path to the GPKG file containing global mining tenament polygons

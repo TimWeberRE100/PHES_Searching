@@ -32,6 +32,7 @@ extern string existing_reservoirs_shp;
 extern string existing_reservoirs_shp_names;
 extern bool use_tiled_bluefield;
 extern bool use_tiled_rivers;
+extern bool use_protected_areas;
 
 // GPKG Tiling
 extern std::string gpkg_path;  // Path to the GPKG file containing global mining tenament polygons
@@ -41,6 +42,7 @@ extern std::string mining_tenament_shp; // File path and naming convention used 
 // General
 extern string file_storage_location; // Where to look for input files and store
                                      // output files
+extern string dem_storage_location;
 extern int border;       // Number of cells to add as border around DEM square
 extern double dambatter; // Slope on sides of dam
 extern double cwidth;    // Width of top of dam

@@ -47,6 +47,13 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
 {
 	Model<bool>* filter = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	filter->set_geodata(DEM->get_geodata());
+
+	if(use_protected_areas){
+		for (int row=0; row<filter->nrows(); row++)
+			for (int col=0; col<filter->ncols(); col++)
+				filter->set(row,col,true);
+	}
+
 	for(string filename:filenames){
 		if(filename=="use_world_urban"){
 			// Exclude urban filter from bulk_pit searches - some pits (such as Kalgoorlie Super Pit) are right next to urban areas. Mining tenament mask is more accurate at preventing overlap with urban area

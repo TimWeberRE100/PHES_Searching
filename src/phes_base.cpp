@@ -86,10 +86,10 @@ string dtos(double f, int nd) {
 std::string get_dem_filename(GridSquare gs){
 	std::string to_return;
 	if (dem_type == "SRTM") {
-		to_return = file_storage_location+"/input/DEMs/"+str(gs)+"_1arc_v3.tif";
+		to_return = dem_storage_location+"/input/DEMs/"+str(gs)+"_1arc_v3.tif";
 	}
 	else if (dem_type == "FABDEM"){
-		to_return = file_storage_location+"/input/FABDEMs/"+str_fabdem(gs)+"_FABDEM_V1-2.tif";
+		to_return = dem_storage_location+"/input/FABDEMs/"+str_fabdem(gs)+"_FABDEM_V1-2.tif";
 	}
 	else {
 		printf("Invalid dem_type specified.\n");

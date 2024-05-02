@@ -8,6 +8,7 @@ string existing_reservoirs_shp;
 string existing_reservoirs_shp_names;
 bool use_tiled_bluefield;
 bool use_tiled_rivers;
+bool use_protected_areas;
 
 // GPKG Tiling
 std::string gpkg_path;  // Path to the GPKG file containing global mining tenament polygons
@@ -16,6 +17,7 @@ std::string mining_tenament_shp;	// File path and naming convention used for the
 
 // General
 string file_storage_location;		// Where to look for input files and store output files
+string dem_storage_location;
 int border;							// Number of cells to add as border around DEM square
 double dambatter;					// Slope on sides of dam
 double cwidth;						// Width of top of dam
@@ -242,6 +244,8 @@ void parse_variables(char* filename){
 				lower_colour = value;
 			if(variable=="file_storage_location")
 				file_storage_location = value;
+			if(variable=="dem_storage_location")
+				dem_storage_location = value;
 			if(variable=="max_head")
 				max_head = stod(value);
 			if(variable=="max_lowers_per_upper")
@@ -285,6 +289,8 @@ void parse_variables(char* filename){
 				use_tiled_bluefield = stoi(value);
 			if(variable=="use_tiled_rivers")
 				use_tiled_rivers = stoi(value);
+			if(variable=="use_protected_areas")
+				use_protected_areas = stoi(value);
 		}
 	}
 }

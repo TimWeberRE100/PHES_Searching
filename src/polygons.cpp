@@ -1,6 +1,7 @@
 #include "polygons.h"
 #include "coordinates.h"
 #include "model2D.h"
+#include "phes_base.h"
 
 // find_polygon_intersections returns an array containing the longitude of all line. Assumes last coordinate is same as first
 vector<double> find_polygon_intersections(int row, vector<GeographicCoordinate> &polygon, Model<bool>* filter){
@@ -21,10 +22,16 @@ void polygon_to_raster(vector<GeographicCoordinate> &polygon, Model<bool>* raste
         vector<double> polygon_intersections = find_polygon_intersections(row, polygon, raster);
         for(uint j = 0; j<polygon_intersections.size();j++)
             polygon_intersections[j] = (convert_coordinates(GeographicCoordinate_init(0, polygon_intersections[j]),raster->get_origin()).col);
-        for(uint j = 0; j<polygon_intersections.size()/2;j++)
-            for(int col=polygon_intersections[2*j];col<polygon_intersections[2*j+1];col++)
-                if(raster->check_within(row, col))
+        for(uint j = 0; j<polygon_intersections.size()/2;j++){
+            for(int col=polygon_intersections[2*j];col<polygon_intersections[2*j+1];col++){
+                if(!raster->check_within(row, col))
+					continue;
+				if(use_protected_areas)
+					raster->set(row,col,false);
+				else
                     raster->set(row,col,true);
+			}
+		}
     }
 }
 
