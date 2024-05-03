@@ -624,7 +624,7 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
                      vector<vector<vector<vector<GeographicCoordinate>>>> &countries,
                      vector<string> &country_names, Model<char> *full_cur_model,
                      BigModel big_model, std::vector<ArrayCoordinate> *used_points, Model<bool> *seen, Model<bool> *seen_tn, bool *non_overlap) {
-  string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound)), reservoir->elevation + reservoir->fill_depth);
+  string polygon_string = str(compress_poly(convert_poly(reservoir->shape_bound,0.5)), reservoir->elevation + reservoir->fill_depth);
   
   if (coordinates != NULL)
     coordinates->reservoir = polygon_string;

@@ -153,11 +153,11 @@ bool model_depression(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *dep
 	int seed_col = pit.seed_point.col;	
 				
 	double total_pit_area = pit_area_calculator(seed_row, seed_col, depression_mask, pit_lake_mask, seen_d, seen_pl, individual_depression_points, pit.overlap, pit.seed_point);
-	printf("%.2f\n",total_pit_area);
+	
 	if (total_pit_area > double(max_pit_area))
 		return false;
 	
-	std::vector<GeographicCoordinate> depression_polygon = convert_poly(find_edge(individual_depression_points, true),0.5);
+	std::vector<GeographicCoordinate> depression_polygon = convert_poly(find_edge(individual_depression_points, false),0.5);
 	
 	// Find lowest point on pit edge
 	int lowest_edge_elevation = INT_MAX;

@@ -12,7 +12,7 @@
 #include <gdal/gdal.h>
 #include <climits>
 
-bool debug_output = true;
+bool debug_output = false;
 
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
@@ -777,8 +777,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				continue;
 			}
 			// If the pit is too small, skip modelling
-			if ((max(pit.areas) < min_watershed_area) || (max(pit.volumes) < min_reservoir_volume)){
-				printf("Sizes: %.2f %.2f\n", max(pit.volumes), max(pit.areas));
+			if ((max(pit.areas) < min_watershed_area) || (max(pit.volumes) < min_reservoir_volume)){				
 				continue;
 			}
 
@@ -787,7 +786,6 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 			// Prevents overlap between pits of different grid-squares and incomplete pit lakes
 			bool touching_edge = false;
 			if(DEM->check_within_border(pit.lowest_point.row, pit.lowest_point.col)){
-				printf("Test 1\n");
 				continue;
 			}
 
@@ -798,7 +796,6 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				}
 			}
 			if(touching_edge){
-				printf("Test 2\n");
 				continue;
 			}
 			

@@ -46,6 +46,9 @@ depression_depth_min = 10;      // Minimum depth of depressions (m) for mining p
 pit_lake_relative_depth = 0.10;  // Pit lakes typically have a relative depth (maximum depth : diameter) of between 10% - 40% (https://www.water.wa.gov.au/__data/assets/pdf_file/0020/4970/96278.pdf). Diameter is based on a circle with the same surface area as the pit lake.
 existing_relative_depth = 0.05; // Relative depth of existing lakes/reservoirs (Bluefield)
 
+max_pit_area = 12000000; // Maximum area (ha) of a pit screening polygon
+depression_depth_min = 2;
+
 max_turkey_area = 200;  // Maximum area (ha) of a turkey nest screening polygon
 max_turkey_slope = 5;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
 max_turkey_dam_height = 150; // Maximum height (m) of turkey nest dams
