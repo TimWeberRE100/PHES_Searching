@@ -12,7 +12,7 @@
 #include <gdal/gdal.h>
 #include <climits>
 
-bool debug_output = false;
+bool debug_output = true;
 
 void read_tif_filter(string filename, Model<bool>* filter, unsigned char value_to_filter){
 	try{
@@ -752,7 +752,9 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 			i++;
 			
 			if ((pit_lake_mask->get(row,col)) && (!seen_pl->get(row,col))) {
-				model_pit_lakes(pit, pit_lake_mask, depression_mask, seen_pl, seen_d, individual_pit_lake_points, DEM);
+				if (!model_pit_lakes(pit, pit_lake_mask, depression_mask, seen_pl, seen_d, individual_pit_lake_points, DEM))
+					continue;
+
 				individual_pit_points = individual_pit_lake_points;
 
 				if (pit.overlap) {
@@ -761,7 +763,9 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				}
 
 			} else if ((depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
-				model_depression(pit, pit_lake_mask, depression_mask, seen_d, seen_pl, individual_depression_points, DEM);
+				if (!model_depression(pit, pit_lake_mask, depression_mask, seen_d, seen_pl, individual_depression_points, DEM))
+					continue;
+
 				individual_pit_points = individual_depression_points;
 				
 				if (pit.overlap) {					
@@ -774,6 +778,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 			}
 			// If the pit is too small, skip modelling
 			if ((max(pit.areas) < min_watershed_area) || (max(pit.volumes) < min_reservoir_volume)){
+				printf("Sizes: %.2f %.2f\n", max(pit.volumes), max(pit.areas));
 				continue;
 			}
 
@@ -782,6 +787,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 			// Prevents overlap between pits of different grid-squares and incomplete pit lakes
 			bool touching_edge = false;
 			if(DEM->check_within_border(pit.lowest_point.row, pit.lowest_point.col)){
+				printf("Test 1\n");
 				continue;
 			}
 
@@ -791,8 +797,10 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 					break;
 				}
 			}
-			if(touching_edge)
+			if(touching_edge){
+				printf("Test 2\n");
 				continue;
+			}
 			
 			if(pit.pit_lake_area / max(pit.areas) > 0.5)
 				pit.res_identifier = str(search_config.grid_square) + "_PITL" + str(i);
