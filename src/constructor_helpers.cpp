@@ -739,14 +739,25 @@ bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* c
   return true;
 }
 
-double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reservoir, BigModel big_model){
+double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reservoir){
+	// Volume below MOL given by smaller cone contained within the larger cone
+  // Depth below MOL determined from similar triangles
+  // V_belowMOL + V_usable = V_reservoir -> h_belowMOL = 3*(V_reservoir - V_usable) / (pi * h_belowMOL^2) ... (1)
+  // r_reservoir / h_reservoir = r_belowMOL / h_belowMOL ... (2)
+
+  double depth_below_MOL = max(0.0,pow(3*1000000*(reservoir.volume - usable_volume)*reservoir.estimated_lake_depth*reservoir.estimated_lake_depth/(pi*reservoir.lake_surface_radius*reservoir.lake_surface_radius),1/3.)); // GL to m^3
+
+  return max(reservoir.estimated_lake_depth - depth_below_MOL,1.0);
+}
+
+void model_existing_shape(Reservoir* reservoir, BigModel big_model){
   // Polygon to raster
   Model<bool> *bluefield_mask = new Model<bool>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);
   bluefield_mask->set_geodata(big_model.DEM->get_geodata());
 
   std::vector<ArrayCoordinate> filled_reservoir_poly;
   
-  std::vector<GeographicCoordinate> reservoir_polygon_gc = convert_poly(reservoir.shape_bound);
+  std::vector<GeographicCoordinate> reservoir_polygon_gc = convert_poly(reservoir->shape_bound);
   polygon_to_raster(reservoir_polygon_gc,bluefield_mask);
   //bluefield_mask->write(to_string(80)+"dump.tif", GDT_Byte); // DEBUG
 
@@ -780,23 +791,35 @@ double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reser
   }
   
   // Find pole of inaccessibility
-  Circle pole_of_inaccess = find_pole_of_inaccessibility(filled_reservoir_poly);
+  reservoir->pole_of_inaccess = find_pole_of_inaccessibility(filled_reservoir_poly);
   
   // Estimate maximum depth
-  double max_depth = existing_relative_depth * pole_of_inaccess.radius;
+  reservoir->estimated_lake_depth = existing_relative_depth * reservoir->pole_of_inaccess.radius;
 
   // Lake volumes are calculated by assuming that they are conical structures
 	// Find height of cone with lake surface as base
-	double lake_surface_r = sqrt(10000*reservoir.area / pi); // Area from Ha to m^2
-
-	// Volume below MOL given by smaller cone contained within the larger cone
-  // Depth below MOL determined from similar triangles
-  // V_belowMOL + V_usable = V_reservoir -> h_belowMOL = 3*(V_reservoir - V_usable) / (pi * h_belowMOL^2) ... (1)
-  // r_reservoir / h_reservoir = r_belowMOL / h_belowMOL ... (2)
-
-  double depth_below_MOL = max(0.0,pow(3*1000000*(reservoir.volume - usable_volume)*max_depth*max_depth/(pi*lake_surface_r*lake_surface_r),1/3.)); // GL to m^3
+	reservoir->lake_surface_radius = sqrt(10000*reservoir->area / pi); // Area from Ha to m^2
 
   delete bluefield_mask;
 
-  return max(max_depth - depth_below_MOL,1.0);
+  return;
+}
+
+std::vector<Reservoir> add_shape_to_existing(Reservoir* reservoir, std::vector<Reservoir> &unique_existing_reservoirs, BigModel big_model){
+  bool new_res = true;
+  for (Reservoir seen_reservoir : unique_existing_reservoirs){
+    if (reservoir->identifier == seen_reservoir.identifier){
+      reservoir->pole_of_inaccess = seen_reservoir.pole_of_inaccess;
+      reservoir->estimated_lake_depth = seen_reservoir.estimated_lake_depth;
+      reservoir->lake_surface_radius = seen_reservoir.lake_surface_radius;
+      new_res = false;
+      break;
+    }
+  }
+  if(new_res){
+    model_existing_shape(reservoir, big_model);
+    unique_existing_reservoirs.push_back(*reservoir);
+  }
+
+  return unique_existing_reservoirs;
 }

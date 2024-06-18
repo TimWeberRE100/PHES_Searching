@@ -80,10 +80,10 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen, Model<bool> *
 
   // Add estimated depth fluctuation to bluefield
   if (pair->upper.brownfield == 1){
-    pair->upper.fill_depth = estimate_existing_depth_fluctuation(pair->volume, pair->upper, big_model);
+    pair->upper.fill_depth = estimate_existing_depth_fluctuation(pair->volume, pair->upper);
   }
   if (pair->lower.brownfield == 1){
-    pair->lower.fill_depth = estimate_existing_depth_fluctuation(pair->volume, pair->lower, big_model);
+    pair->lower.fill_depth = estimate_existing_depth_fluctuation(pair->volume, pair->lower);
   }
   
   // Check overlap between reservoirs during pit and existing reservoir constructor
@@ -255,6 +255,7 @@ int main(int nargs, char **argv)
     full_cur_model->set_geodata(big_model.DEM->get_geodata());
     vector<vector<GeographicCoordinate>> seen_polygons;
     vector<string> seen_ids;
+    vector<Reservoir> unique_existing_reservoirs;
 
     int total_count = 0;
     int total_capacity = 0;
@@ -276,11 +277,15 @@ int main(int nargs, char **argv)
 
           if (!(search_config.search_type == SearchType::BULK_PIT)){
             for(uint j=0; j<pairs[i].size(); j++){
-              if (pairs[i][j].lower.brownfield == 1)
+              if (pairs[i][j].lower.brownfield == 1){
                 model_existing_reservoir(&pairs[i][j].lower, NULL, empty_countries, empty_country_names);
+                add_shape_to_existing(&pairs[i][j].lower, unique_existing_reservoirs, big_model);               
+              }
 
-              if (pairs[i][j].upper.brownfield == 1)
+              if (pairs[i][j].upper.brownfield == 1){
                 model_existing_reservoir(&pairs[i][j].upper, NULL, empty_countries, empty_country_names);
+                add_shape_to_existing(&pairs[i][j].upper, unique_existing_reservoirs, big_model);                 
+              }
             }
           }
 

@@ -124,6 +124,9 @@ class Reservoir {
     string country;
     vector<ArrayCoordinate> shape_bound;
     vector<ArrayCoordinate> reservoir_polygon;
+    Circle pole_of_inaccess = {{0,0,{0,0}},0};
+    double estimated_lake_depth;
+    double lake_surface_radius;
     bool operator<(const Reservoir &o) const { return elevation > o.elevation; }
 };
 
