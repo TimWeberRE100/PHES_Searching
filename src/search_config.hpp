@@ -130,6 +130,8 @@ class SearchConfig {
         arg1 = argv[1 + adj];
       } else if (arg1.compare("river") == 0) {
         search_type = SearchType::RIVER;
+        adj = 1;
+        arg1 = argv[1 + adj];
       } else if (arg1.compare("turkey") == 0) {
         search_type = SearchType::TURKEY;
         adj = 1;
