@@ -1,6 +1,7 @@
 #ifndef CONSTRUCTOR_HELPER_H
 #define CONSTRUCTOR_HELPER_H
 
+#include "model2D.h"
 #include "phes_base.h"
 #include "kml.h"
 
@@ -34,6 +35,6 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
                      BigModel big_model, std::vector<ArrayCoordinate> *used_points, Model<bool> *seen, Model<bool> *seen_tn, bool *non_overlap);
 bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* coordinates, vector<vector<vector<vector<GeographicCoordinate>>>>& countries, vector<string>& country_names);
 double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reservoir);
-void model_existing_shape(Reservoir* reservoir, BigModel big_model);
-std::vector<Reservoir> add_shape_to_existing(Reservoir* reservoir, std::vector<Reservoir> &unique_existing_reservoirs, BigModel big_model);
+void model_existing_shape(Reservoir* reservoir, GeographicCoordinate big_model_origin);
+std::vector<Reservoir> add_shape_to_existing(Reservoir* reservoir, std::vector<Reservoir> &unique_existing_reservoirs, GeographicCoordinate big_model_origin);
 #endif

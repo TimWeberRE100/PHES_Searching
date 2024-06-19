@@ -33,6 +33,7 @@ struct Shape {
   double volume=0;
   string name="";
   int elevation = 0;
+  GeographicCoordinate point_of_inaccessibility;
 };
 
 std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<vector<int>> *relevant_polygons, std::string type, int &SHAPE_TYPE){
@@ -44,6 +45,8 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
     int dbf_field = 0;
     int dbf_name_field = 0;
     int dbf_elevation_field = 0;
+    int dbf_poi_lat_field = 0;
+    int dbf_poi_lon_field = 0;
     if (type == "RIVER"){
       dbf_field = DBFGetFieldIndex(DBF, string("DIS_AV_CMS").c_str());
       dbf_name_field = DBFGetFieldIndex(DBF, string("River_name").c_str());
@@ -52,6 +55,8 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
       dbf_field = DBFGetFieldIndex(DBF, string("Vol_total").c_str());
       dbf_elevation_field = DBFGetFieldIndex(DBF, string("Elevation").c_str());
       dbf_name_field = DBFGetFieldIndex(DBF, string("Lake_name").c_str());
+      dbf_poi_lat_field = DBFGetFieldIndex(DBF, string("y").c_str());
+      dbf_poi_lon_field = DBFGetFieldIndex(DBF, string("x").c_str());
     }
     if (SHP != NULL) {
       int nEntities;
@@ -94,6 +99,9 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
               shape.volume = volume;
               shape.elevation =DBFReadIntegerAttribute(DBF, i, dbf_elevation_field);
               shape.name = string(DBFReadStringAttribute(DBF, i, dbf_name_field));
+              double poi_lat = DBFReadDoubleAttribute(DBF, i, dbf_poi_lat_field);
+              double poi_lon = DBFReadDoubleAttribute(DBF, i, dbf_poi_lon_field);
+              shape.point_of_inaccessibility = {poi_lat,poi_lon};
             }
             shapes.push_back(shape);
             iterator++;
@@ -122,6 +130,9 @@ std::vector<Shape> read_shapefile(string filename, Model<bool> *to_keep, Model<v
           shape.volume = volume;
           shape.elevation =DBFReadIntegerAttribute(DBF, i, dbf_elevation_field);
           shape.name = string(DBFReadStringAttribute(DBF, i, dbf_name_field));
+          double poi_lat = DBFReadDoubleAttribute(DBF, i, dbf_poi_lat_field);
+          double poi_lon = DBFReadDoubleAttribute(DBF, i, dbf_poi_lon_field);
+          shape.point_of_inaccessibility = {poi_lat,poi_lon};
         }
         shapes.push_back(shape);
         iterator++;
@@ -229,7 +240,7 @@ int main(int argc, char *argv[]) {
         DBF = DBFCreate(convert_string(output_location + "/" + str(gs) + "_temp_shapefile_tile.dbf"));
       }		
       
-      int field_num=0, elevation_field_num=0, name_field_num =0;
+      int field_num=0, elevation_field_num=0, name_field_num =0, dbf_poi_lat_num=0, dbf_poi_lon_num=0;
       if(type=="RIVER"){
         field_num = DBFAddField(DBF, convert_string("DIS_AV_CMS"), FTDouble, 10, 3);
         name_field_num = DBFAddField(DBF, convert_string("River_name"), FTString, 64, 0);
@@ -238,6 +249,8 @@ int main(int argc, char *argv[]) {
         field_num = DBFAddField(DBF, convert_string("Vol_total"), FTDouble, 10, 3);
         elevation_field_num = DBFAddField(DBF, convert_string("Elevation"), FTInteger, 10, 0);
         name_field_num = DBFAddField(DBF, convert_string("Lake_name"), FTString, 64, 0);
+        dbf_poi_lat_num = DBFAddField(DBF, convert_string("POI_lat"), FTDouble, 10, 6);
+        dbf_poi_lon_num = DBFAddField(DBF, convert_string("POI_lon"), FTDouble, 10, 6);
       }
       if (SHP == NULL) {
         printf("Unable to create:%s\n",
@@ -273,6 +286,8 @@ int main(int argc, char *argv[]) {
           DBFWriteDoubleAttribute(DBF, shp_num, field_num, shape.volume);
           DBFWriteIntegerAttribute(DBF, shp_num, elevation_field_num, shape.elevation);
           DBFWriteStringAttribute(DBF, shp_num, name_field_num, shape.name.c_str());
+          DBFWriteDoubleAttribute(DBF, shp_num, dbf_poi_lat_num, shape.point_of_inaccessibility.lat);
+          DBFWriteDoubleAttribute(DBF, shp_num, dbf_poi_lon_num, shape.point_of_inaccessibility.lon);
         }
         SHPDestroyObject(psObject);
         delete[] padfY;

@@ -279,12 +279,12 @@ int main(int nargs, char **argv)
             for(uint j=0; j<pairs[i].size(); j++){
               if (pairs[i][j].lower.brownfield == 1){
                 model_existing_reservoir(&pairs[i][j].lower, NULL, empty_countries, empty_country_names);
-                add_shape_to_existing(&pairs[i][j].lower, unique_existing_reservoirs, big_model);               
+                add_shape_to_existing(&pairs[i][j].lower, unique_existing_reservoirs, big_model.DEM->get_origin());               
               }
 
               if (pairs[i][j].upper.brownfield == 1){
                 model_existing_reservoir(&pairs[i][j].upper, NULL, empty_countries, empty_country_names);
-                add_shape_to_existing(&pairs[i][j].upper, unique_existing_reservoirs, big_model);                 
+                add_shape_to_existing(&pairs[i][j].upper, unique_existing_reservoirs, big_model.DEM->get_origin());                 
               }
             }
           }

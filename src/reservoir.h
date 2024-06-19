@@ -1,6 +1,7 @@
 #ifndef RESERVOIR_H
 #define RESERVOIR_H
 
+#include "model2D.h"
 #include "phes_base.h"
 #include <array>
 
@@ -85,6 +86,7 @@ struct ExistingReservoir {
   double area;
   bool river = false;
   vector<GeographicCoordinate> polygon;
+  GeographicCoordinate point_of_inaccessibility;
 };
 
 struct AltitudeVolumePair {
@@ -124,6 +126,7 @@ class Reservoir {
     string country;
     vector<ArrayCoordinate> shape_bound;
     vector<ArrayCoordinate> reservoir_polygon;
+    GeographicCoordinate point_of_inaccessibility_gc;
     Circle pole_of_inaccess = {{0,0,{0,0}},0};
     double estimated_lake_depth;
     double lake_surface_radius;

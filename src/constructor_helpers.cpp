@@ -6,6 +6,8 @@
 #include "model2D.h"
 #include "phes_base.h"
 #include "reservoir.h"
+#include <cfloat>
+#include <cstdint>
 
 /*
  * Returns sorted vector containing the longitude of all polgon boundary interections at certain
@@ -709,10 +711,11 @@ bool model_from_shapebound(Reservoir *reservoir, Reservoir_KML_Coordinates *coor
 bool model_existing_reservoir(Reservoir* reservoir, Reservoir_KML_Coordinates* coordinates, vector<vector<vector<vector<GeographicCoordinate>>>>& countries, vector<string>& country_names){
   if(!reservoir->river){
     ExistingReservoir r;
-    if (use_tiled_bluefield)
+    if (use_tiled_bluefield){
       r = get_existing_tiled_reservoir(reservoir->identifier, reservoir->latitude,
           reservoir->longitude);
-    else
+      reservoir->point_of_inaccessibility_gc = r.point_of_inaccessibility;
+    } else
       r = get_existing_reservoir(reservoir->identifier);
 
     if (coordinates != NULL) {
@@ -750,48 +753,15 @@ double estimate_existing_depth_fluctuation(double usable_volume, Reservoir reser
   return max(reservoir.estimated_lake_depth - depth_below_MOL,1.0);
 }
 
-void model_existing_shape(Reservoir* reservoir, BigModel big_model){
-  // Polygon to raster
-  Model<bool> *bluefield_mask = new Model<bool>(big_model.DEM->nrows(), big_model.DEM->ncols(), MODEL_SET_ZERO);
-  bluefield_mask->set_geodata(big_model.DEM->get_geodata());
+void model_existing_shape(Reservoir* reservoir, GeographicCoordinate big_model_origin){  
+  // Find pole of inaccessibility (coordinate found in QGIS during preprocessing since that algorithm is much faster)
+  reservoir->pole_of_inaccess.centre_point = convert_coordinates(reservoir->point_of_inaccessibility_gc, big_model_origin);
 
-  std::vector<ArrayCoordinate> filled_reservoir_poly;
-  
-  std::vector<GeographicCoordinate> reservoir_polygon_gc = convert_poly(reservoir->shape_bound);
-  polygon_to_raster(reservoir_polygon_gc,bluefield_mask);
-  //bluefield_mask->write(to_string(80)+"dump.tif", GDT_Byte); // DEBUG
-
-  queue<ArrayCoordinate> q;
-  for (GeographicCoordinate gc : reservoir_polygon_gc) {
-    ArrayCoordinate ac = convert_coordinates(gc,bluefield_mask->get_origin());
-    q.push(ac);
+  reservoir->pole_of_inaccess.radius = DBL_MAX;
+  for(ArrayCoordinate ac : reservoir->shape_bound){
+    double test_distance = find_distance(reservoir->pole_of_inaccess.centre_point, ac)*1000; // km to m
+    reservoir->pole_of_inaccess.radius = MIN(reservoir->pole_of_inaccess.radius,test_distance);
   }
-
-  while (!q.empty()) {
-      ArrayCoordinate p = q.front();
-      q.pop();
-
-      if (!bluefield_mask->check_within(p.row,p.col))
-        continue;
-
-      if (!bluefield_mask->get(p.row,p.col))
-        continue;
-
-      filled_reservoir_poly.push_back(p);
-      bluefield_mask->set(p.row,p.col,false);
-
-      for (uint d=0; d<directions.size(); d++) {
-        if (directions[d].row * directions[d].col != 0)
-          continue;	
-
-        ArrayCoordinate neighbor = {p.row+directions[d].row, p.col+directions[d].col, p.origin};
-  
-        q.push(neighbor);
-    }
-  }
-  
-  // Find pole of inaccessibility
-  reservoir->pole_of_inaccess = find_pole_of_inaccessibility(filled_reservoir_poly);
   
   // Estimate maximum depth
   reservoir->estimated_lake_depth = existing_relative_depth * reservoir->pole_of_inaccess.radius;
@@ -799,13 +769,11 @@ void model_existing_shape(Reservoir* reservoir, BigModel big_model){
   // Lake volumes are calculated by assuming that they are conical structures
 	// Find height of cone with lake surface as base
 	reservoir->lake_surface_radius = sqrt(10000*reservoir->area / pi); // Area from Ha to m^2
-
-  delete bluefield_mask;
-
+  
   return;
 }
 
-std::vector<Reservoir> add_shape_to_existing(Reservoir* reservoir, std::vector<Reservoir> &unique_existing_reservoirs, BigModel big_model){
+std::vector<Reservoir> add_shape_to_existing(Reservoir* reservoir, std::vector<Reservoir> &unique_existing_reservoirs, GeographicCoordinate big_model_origin){
   bool new_res = true;
   for (Reservoir seen_reservoir : unique_existing_reservoirs){
     if (reservoir->identifier == seen_reservoir.identifier){
@@ -817,7 +785,7 @@ std::vector<Reservoir> add_shape_to_existing(Reservoir* reservoir, std::vector<R
     }
   }
   if(new_res){
-    model_existing_shape(reservoir, big_model);
+    model_existing_shape(reservoir, big_model_origin);
     unique_existing_reservoirs.push_back(*reservoir);
   }
 

@@ -66,7 +66,7 @@ string get_html(Reservoir* reservoir, Pair* pair){
 "              <tr><td>Area (ha)</td><td>"+dtos(reservoir->area,0)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Country</td><td>"+reservoir->country+"</td></tr>"+newline+
 (reservoir->volume < INF*1e-1 ? ("              <tr><td>Volume (GL)</td><td>"+dtos(reservoir->volume,0)+"</td></tr>"+newline) : "") +
-"			   <tr><td>Estimated maximum depth (m)</td><td>"+dtos(reservoir->estimated_lake_depth,0)+"</td></tr>"+newline+
+"			   <tr bgcolor=\"#D4E4F3\"><td>Estimated maximum depth (m)</td><td>"+dtos(reservoir->estimated_lake_depth,0)+"</td></tr>"+newline+
 "              </table></td></tr></table></body></html>\n";
 	}else{
 		return

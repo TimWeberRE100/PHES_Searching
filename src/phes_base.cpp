@@ -297,6 +297,8 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
     int dbf_field = DBFGetFieldIndex(DBF, string("Vol_total").c_str());
     int dbf_elevation_field = DBFGetFieldIndex(DBF, string("Elevation").c_str());
     int dbf_name_field = DBFGetFieldIndex(DBF, string("Lake_name").c_str());
+	int dbf_poi_lat_field = DBFGetFieldIndex(DBF, string("POI_lat").c_str());
+    int dbf_poi_lon_field = DBFGetFieldIndex(DBF, string("POI_lon").c_str());
     for (i = 0; i<DBFGetRecordCount(DBF); i++){
       const char* s = DBFReadStringAttribute(DBF, i, dbf_name_field);
       if(name==string(s)){
@@ -308,7 +310,11 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
       throw 1;
     }
     to_return = ExistingReservoir_init(name, 0, 0, DBFReadIntegerAttribute(DBF, i, dbf_elevation_field), DBFReadDoubleAttribute(DBF, i, dbf_field));
-    DBFClose(DBF);
+    
+	double poi_lat = DBFReadDoubleAttribute(DBF, i, dbf_poi_lat_field);
+    double poi_lon = DBFReadDoubleAttribute(DBF, i, dbf_poi_lon_field);
+	to_return.point_of_inaccessibility = {poi_lat, poi_lon};
+	DBFClose(DBF);
   } else {
     vector<ExistingReservoir> reservoirs = read_existing_reservoir_data(convert_string(filename));
 
