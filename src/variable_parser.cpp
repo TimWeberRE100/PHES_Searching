@@ -105,6 +105,11 @@ vector<CategoryCutoff> category_cutoffs;
 double max_bluefield_surface_area_ratio;
 double river_flow_volume_ratio;
 
+// Other settings
+int model_size;
+int tile_overlap;
+std::string protected_area_folder;
+
 void parse_variables(char* filename){
     if(!file_exists(filename)){
 		search_config.logger.error("No file: " + string(filename));
@@ -126,8 +131,11 @@ void parse_variables(char* filename){
 				filter_filenames.push_back(value);
 			if(variable=="filter_to_tile")
 				filter_filenames_to_tile.push_back(value);
-			if(variable=="dem_type")
+			if(variable=="dem_type"){
 				dem_type=value;
+				model_size = (dem_type=="SRTM") ? 3601 : 3600;
+				tile_overlap = (dem_type=="SRTM") ? 1 : 0;
+			}
 			if(variable=="mining_tenament_shp")
 				mining_tenament_shp = value;
 			if(variable=="depression_depth_min")
@@ -293,8 +301,10 @@ void parse_variables(char* filename){
 				use_tiled_bluefield = stoi(value);
 			if(variable=="use_tiled_rivers")
 				use_tiled_rivers = stoi(value);
-			if(variable=="use_protected_areas")
+			if(variable=="use_protected_areas"){
 				use_protected_areas = stoi(value);
+				protected_area_folder = (!use_protected_areas) ? "unprotected" : "protected";
+			}
 		}
 	}
 }

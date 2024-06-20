@@ -186,16 +186,17 @@ int main(int nargs, char **argv)
     parse_variables(convert_string(file_storage_location+"variables"));
     unsigned long t_usec = walltime_usec();
 
-    pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/pretty_set_pairs/"+search_config.filename()+"_rough_pretty_set_pairs_data.csv"));
+    pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/" + protected_area_folder + "/pretty_set_pairs/"+search_config.filename()+"_rough_pretty_set_pairs_data.csv"));
 
-    mkdir(convert_string(file_storage_location+"output/final_output_classes"), 0777);
-    mkdir(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()),0777);
-    mkdir(convert_string(file_storage_location+"output/final_output_FOM"), 0777);
-    mkdir(convert_string(file_storage_location+"output/final_output_FOM/"+search_config.filename()),0777);
+    mkdir(convert_string(file_storage_location+"output/" + protected_area_folder), 0777);
+    mkdir(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_classes"), 0777);
+    mkdir(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_classes/"+search_config.filename()),0777);
+    mkdir(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_FOM"), 0777);
+    mkdir(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_FOM/"+search_config.filename()),0777);
 
-    FILE *total_csv_file_classes = fopen(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_total.csv"), "w");
+    FILE *total_csv_file_classes = fopen(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_total.csv"), "w");
     write_summary_csv_header(total_csv_file_classes);
-    FILE *total_csv_file_FOM = fopen(convert_string(file_storage_location+"output/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_total.csv"), "w");
+    FILE *total_csv_file_FOM = fopen(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_total.csv"), "w");
     write_summary_csv_header(total_csv_file_FOM);
 
     // Read in all rough pairs from neighbours. Only keep pairs that have a pit/existing reservoir in the centre grid square
@@ -206,13 +207,13 @@ int main(int nargs, char **argv)
 
         vector<vector<Pair>> neighbor_pairs;
         try {
-          neighbor_pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/pretty_set_pairs/"+search_config.search_type.prefix()+str(neighbor_gs) +"_rough_pretty_set_pairs_data.csv"));
+          neighbor_pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/" + protected_area_folder + "/pretty_set_pairs/"+search_config.search_type.prefix()+str(neighbor_gs) +"_rough_pretty_set_pairs_data.csv"));
           for(uint i=0; i<neighbor_pairs.size(); i++){
             pairs.push_back(neighbor_pairs[i]);
           }
         } catch(int e) {
           search_config.logger.debug("Could not import pretty set pairs from " + file_storage_location +
-                                 "processing_files/pretty_set_pairs/" +
+                                 "processing_files/" + protected_area_folder + "/pretty_set_pairs/" +
                                  search_config.search_type.prefix()+str(neighbor_gs) +"_rough_pretty_set_pairs_data.csv");
         }
       }
@@ -268,12 +269,21 @@ int main(int nargs, char **argv)
   			vector<string> empty_country_names;
         if (search_config.search_type == SearchType::TURKEY || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::BULK_EXISTING) {  
           if((search_config.search_type != SearchType::BULK_PIT) && (search_config.search_type != SearchType::BULK_EXISTING)){
-            read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/turkey_" + 
+            read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/turkey_" + 
                                   str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
+            if(use_protected_areas){
+              read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/turkey_" + 
+                                  str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
+            }
           }
-          if (search_config.search_type != SearchType::BULK_EXISTING)
-            read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/pit_" + 
+          if (search_config.search_type != SearchType::BULK_EXISTING){
+            read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" + 
                                   str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
+            if(use_protected_areas){
+              read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/pit_" + 
+                                  str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
+            }
+          }
 
           if (!(search_config.search_type == SearchType::BULK_PIT)){
             for(uint j=0; j<pairs[i].size(); j++){
@@ -291,13 +301,23 @@ int main(int nargs, char **argv)
 
           for (uint d=0; d<directions.size(); d++){   
             GridSquare neighbor_gs = GridSquare_init(search_config.grid_square.lat + directions[d].row, search_config.grid_square.lon+ directions[d].col);
-            if(!(search_config.search_type == SearchType::BULK_PIT) && !(search_config.search_type == SearchType::BULK_EXISTING))
-              read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/turkey_" +
+            if(!(search_config.search_type == SearchType::BULK_PIT) && !(search_config.search_type == SearchType::BULK_EXISTING)){
+              read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/turkey_" +
                                   str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
+              if(use_protected_areas){
+                read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/turkey_" +
+                                  str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
+              }
+            }
 
-            if (!(search_config.search_type == SearchType::BULK_EXISTING))
-              read_pit_polygons(convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
+            if (!(search_config.search_type == SearchType::BULK_EXISTING)){
+              read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" +
                                   str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
+              if(use_protected_areas){
+                read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/pit_" +
+                                  str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
+              }
+            }
           }
         }
 
@@ -329,13 +349,13 @@ int main(int nargs, char **argv)
           }
         }
 
-        FILE *csv_file_classes = fopen(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".csv"), "w");
+        FILE *csv_file_classes = fopen(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".csv"), "w");
         write_pair_csv_header(csv_file_classes, false);
-        FILE *csv_file_FOM = fopen(convert_string(file_storage_location+"output/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".csv"), "w");
+        FILE *csv_file_FOM = fopen(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".csv"), "w");
         write_pair_csv_header(csv_file_FOM, true);
 
-        ofstream kml_file_classes(convert_string(file_storage_location+"output/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".kml"), ios::out);
-        ofstream kml_file_FOM(convert_string(file_storage_location+"output/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".kml"), ios::out);
+        ofstream kml_file_classes(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_classes/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".kml"), ios::out);
+        ofstream kml_file_FOM(convert_string(file_storage_location+"output/" + protected_area_folder + "/final_output_FOM/"+search_config.filename()+"/"+search_config.filename()+"_"+str(tests[i])+".kml"), ios::out);
         KML_Holder kml_holder;
 
         sort(pairs[i].begin(), pairs[i].end());

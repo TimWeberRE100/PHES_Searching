@@ -482,12 +482,12 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
   FILE *csv_file;
   if (search_config.search_type == SearchType::OCEAN)
     csv_file = fopen(convert_string(file_storage_location +
-                                    "output/reservoirs/ocean_" +
+                                    "output/" + protected_area_folder + "/reservoirs/ocean_" +
                                     str(square_coordinate) + "_reservoirs.csv"),
                      "w");
   else
     csv_file =
-        fopen(convert_string(file_storage_location + "output/reservoirs/" +
+        fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/" +
                              str(square_coordinate) + "_reservoirs.csv"),
               "w");
   if (!csv_file) {
@@ -500,12 +500,12 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
   if (search_config.search_type == SearchType::OCEAN)
     csv_data_file =
         fopen(convert_string(file_storage_location +
-                             "processing_files/reservoirs/ocean_" +
+                             "processing_files/" + protected_area_folder + "/reservoirs/ocean_" +
                              str(square_coordinate) + "_reservoirs_data.csv"),
               "w");
   else
     csv_data_file = fopen(
-        convert_string(file_storage_location + "processing_files/reservoirs/" +
+        convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        str(square_coordinate) + "_reservoirs_data.csv"),
         "w");
   if (!csv_file) {
@@ -673,7 +673,7 @@ void output_empty_mining(){
 
 	// Prepare the reservoir CSV file
 	csv_file =
-			fopen(convert_string(file_storage_location + "output/reservoirs/pit_" +
+			fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/pit_" +
 					str(search_config.grid_square) + "_reservoirs.csv"),
 				"w");
 	if (!csv_file) {
@@ -684,7 +684,7 @@ void output_empty_mining(){
 
 	// Prepare the reservoir data CSV file
 	csv_data_file = fopen(
-			convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
+			convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" +
 				str(search_config.grid_square) + "_reservoirs_data.csv"),
 			"w");
 	if (!csv_data_file) {
@@ -716,7 +716,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 
 	// Prepare the reservoir CSV file
 	csv_file =
-			fopen(convert_string(file_storage_location + "output/reservoirs/pit_" +
+			fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/pit_" +
 					str(search_config.grid_square) + "_reservoirs.csv"),
 				"w");
 	if (!csv_file) {
@@ -727,7 +727,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 
 	// Prepare the reservoir data CSV file
 	csv_data_file = fopen(
-			convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
+			convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" +
 				str(search_config.grid_square) + "_reservoirs_data.csv"),
 			"w");
 	if (!csv_data_file) {
@@ -867,7 +867,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 
 	// Prepare the reservoir CSV file
 	csv_file =
-			fopen(convert_string(file_storage_location + "output/reservoirs/turkey_" +
+			fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/turkey_" +
 					str(search_config.grid_square) + "_reservoirs.csv"),
 				"w");
 	if (!csv_file) {
@@ -878,7 +878,7 @@ int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_d
 
 	// Prepare the reservoir data CSV file
 	csv_data_file = fopen(
-			convert_string(file_storage_location + "processing_files/reservoirs/turkey_" +
+			convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/turkey_" +
 				str(search_config.grid_square) + "_reservoirs_data.csv"),
 			"w");
 	if (!csv_data_file) {
@@ -997,9 +997,11 @@ int main(int nargs, char **argv) {
   unsigned long t_usec = start_usec;
 
   mkdir(convert_string(file_storage_location + "output"), 0777);
-  mkdir(convert_string(file_storage_location + "output/reservoirs"), 0777);
+  mkdir(convert_string(file_storage_location + "output/" + protected_area_folder), 0777);
+  mkdir(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs"), 0777);
   mkdir(convert_string(file_storage_location + "processing_files"), 0777);
-  mkdir(convert_string(file_storage_location + "processing_files/reservoirs"), 0777);
+  mkdir(convert_string(file_storage_location + "processing_files/" + protected_area_folder), 0777);
+  mkdir(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs"), 0777);
 
   if (search_config.search_type.not_existing() && search_config.search_type != SearchType::TURKEY) {
 	// Create the DEM and filter model
@@ -1257,7 +1259,7 @@ int main(int nargs, char **argv) {
     
     // Brownfield searching based on individual pits or bluefield based on existing reservoirs
     } else if (search_config.search_type.existing() && search_config.search_type != SearchType::BULK_PIT) {
-		FILE *csv_file = fopen(convert_string(file_storage_location + "output/reservoirs/" +
+		FILE *csv_file = fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/" +
 											search_config.filename() + "_reservoirs.csv"),
 							"w");
 		if (!csv_file) {
@@ -1268,7 +1270,7 @@ int main(int nargs, char **argv) {
 		write_rough_reservoir_csv_header(csv_file);
 
 		FILE *csv_data_file =
-			fopen(convert_string(file_storage_location + "processing_files/reservoirs/" +
+			fopen(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
 				search_config.filename() +
 								"_reservoirs_data.csv"),
 				"w");

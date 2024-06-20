@@ -139,6 +139,11 @@ extern double ref_marine_cost;
 extern double ref_power;
 extern double ref_head;
 
+// Other settings
+extern int model_size;
+extern int tile_overlap;
+extern std::string protected_area_folder;
+
 struct Test {
   double energy_capacity;
   int storage_time;
@@ -167,9 +172,6 @@ struct CategoryCutoff {
     return category > o.category;
   }
 };
-
-const int model_size = (dem_type=="SRTM") ? 3601 : 3600;
-const int tile_overlap = (dem_type=="SRTM") ? 1 : 0;
 
 extern vector<CategoryCutoff> category_cutoffs;
 

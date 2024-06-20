@@ -60,10 +60,10 @@ int main(int nargs, char **argv)
 	parse_variables(convert_string(file_storage_location+"variables"));
 	unsigned long t_usec = walltime_usec();
 
-	pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/pairs/"+search_config.filename()+"_rough_pairs_data.csv"));
+	pairs = read_rough_pair_data(convert_string(file_storage_location+"processing_files/" + protected_area_folder + "/pairs/"+search_config.filename()+"_rough_pairs_data.csv"));
 
-	mkdir(convert_string(file_storage_location+"processing_files/pretty_set_pairs"),0777);
-	FILE *csv_data_file = fopen(convert_string(file_storage_location+"processing_files/pretty_set_pairs/"+search_config.filename()+"_rough_pretty_set_pairs_data.csv"), "w");
+	mkdir(convert_string(file_storage_location+"processing_files/" + protected_area_folder + "/pretty_set_pairs"),0777);
+	FILE *csv_data_file = fopen(convert_string(file_storage_location+"processing_files/" + protected_area_folder + "/pretty_set_pairs/"+search_config.filename()+"_rough_pretty_set_pairs_data.csv"), "w");
 	write_rough_pair_data_header(csv_data_file);
 
 	uint total_pairs = 0;

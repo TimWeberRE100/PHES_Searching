@@ -35,7 +35,7 @@ int main(int nargs, char **argv) {
   full_cur_model->set_geodata(big_model.DEM->get_geodata());
 
   vector<unique_ptr<RoughReservoir>> reservoirs = read_rough_reservoir_data(
-      convert_string(file_storage_location + "processing_files/reservoirs/" +
+      convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                      str(square_coordinate) + "_reservoirs_data.csv"));
   search_config.logger.debug("Read in " + to_string(reservoirs.size()) +
                              " reservoirs");
