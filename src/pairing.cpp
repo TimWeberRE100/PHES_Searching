@@ -507,14 +507,6 @@ int main(int nargs, char **argv) {
     upper_reservoirs = read_rough_reservoir_data(
         convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        search_config.filename() + "_reservoirs_data.csv"));
-    if(use_protected_areas){
-      vector<unique_ptr<RoughReservoir>> unprotected_upper_reservoirs = read_rough_reservoir_data(
-        convert_string(file_storage_location + "processing_files/unprotected/reservoirs/" +
-                       search_config.filename() + "_reservoirs_data.csv"));
-      for(size_t i = 0; i<unprotected_upper_reservoirs.size(); i++){
-        upper_reservoirs.push_back(std::move(unprotected_upper_reservoirs[i]));
-      }
-    }
     
     if (search_config.search_type == SearchType::BULK_EXISTING || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::RIVER){      
       vector<unique_ptr<RoughReservoir>> greenfield_reservoirs = read_rough_reservoir_data(
@@ -522,14 +514,6 @@ int main(int nargs, char **argv) {
                          str(search_config.grid_square) + "_reservoirs_data.csv"));
       for(size_t i = 0; i<greenfield_reservoirs.size(); i++){
         upper_reservoirs.push_back(std::move(greenfield_reservoirs[i]));
-      }
-      if(use_protected_areas){
-        vector<unique_ptr<RoughReservoir>> unprotected_greenfield_reservoirs = read_rough_reservoir_data(
-          convert_string(file_storage_location + "processing_files/unprotected/reservoirs/" +
-                         str(search_config.grid_square) + "_reservoirs_data.csv"));
-        for(size_t i = 0; i<unprotected_greenfield_reservoirs.size(); i++){
-          upper_reservoirs.push_back(std::move(unprotected_greenfield_reservoirs[i]));
-        }
       }
     }
 
@@ -540,27 +524,11 @@ int main(int nargs, char **argv) {
       upper_reservoirs = read_rough_reservoir_data(
         convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        search_config.search_type.lowers_prefix() + str(search_config.grid_square) + "_reservoirs_data.csv"));
-      if(use_protected_areas){
-        vector<unique_ptr<RoughReservoir>> unprotected_upper_reservoirs = read_rough_reservoir_data(
-        convert_string(file_storage_location + "processing_files/unprotected/reservoirs/" +
-                       search_config.search_type.lowers_prefix() + str(search_config.grid_square) + "_reservoirs_data.csv"));
-        for(size_t i = 0; i<unprotected_upper_reservoirs.size(); i++){
-          upper_reservoirs.push_back(std::move(unprotected_upper_reservoirs[i]));
-        }
-      }
       
   } else {
     upper_reservoirs = read_rough_reservoir_data(
         convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        str(search_config.grid_square) + "_reservoirs_data.csv"));
-    if(use_protected_areas){
-      vector<unique_ptr<RoughReservoir>> unprotected_upper_reservoirs = read_rough_reservoir_data(
-        convert_string(file_storage_location + "processing_files/unprotected/reservoirs/" +
-                       str(search_config.grid_square) + "_reservoirs_data.csv"));
-      for(size_t i = 0; i<unprotected_upper_reservoirs.size(); i++){
-        upper_reservoirs.push_back(std::move(unprotected_upper_reservoirs[i]));
-      }
-    }
   }
   GridSquare neighbors[9] = {
       (GridSquare){search_config.grid_square.lat, search_config.grid_square.lon},
