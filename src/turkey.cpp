@@ -350,7 +350,7 @@ void turkey_reservoir_fill(std::vector<ArrayCoordinate> reservoir_polygon, Model
         if (full_cur_model != NULL)
             full_cur_model->set(point.row+offset.row, point.col+offset.col, 1);
     }
-    
+    //full_cur_model->write("dump11.tif", GDT_Byte);
 
     if (full_cur_model == NULL)
         return;

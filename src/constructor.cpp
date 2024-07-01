@@ -36,8 +36,9 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen, Model<bool> *
     }
   } else if (!model_reservoir(&pair->upper, &pair_kml->upper, seen, seen_tn, non_overlap,
                               &used_points, big_model, full_cur_model,
-                              countries, country_names))
+                              countries, country_names)){
     return false;
+  }
 
   if (pair->lower.brownfield && (search_config.search_type != SearchType::BULK_PIT)) {
     if (!model_existing_reservoir(&pair->lower, &pair_kml->lower, countries,
@@ -84,6 +85,16 @@ bool model_pair(Pair *pair, Pair_KML *pair_kml, Model<bool> *seen, Model<bool> *
   }
   if (pair->lower.brownfield == 1){
     pair->lower.fill_depth = estimate_existing_depth_fluctuation(pair->volume, pair->lower);
+  }
+
+  if((pair->upper.pit) || (pair->lower.pit)){
+    if((pair->upper.identifier=="n40_w113_PITL123") || (pair->lower.identifier=="n40_w113_PITL123") ||
+    (pair->upper.identifier=="n40_w113_PITL318115") || (pair->lower.identifier=="n40_w113_PITL318115") ||
+    (pair->upper.identifier=="s24_e014_PITL1") || (pair->lower.identifier=="s24_e014_PITL1") ||
+    (pair->upper.identifier=="n37_w118_PITL40151") || (pair->lower.identifier=="n37_w118_PITL40151") ||
+    (pair->energy_capacity > 500)
+    )
+      return false;
   }
   
   // Check overlap between reservoirs during pit and existing reservoir constructor
@@ -271,18 +282,10 @@ int main(int nargs, char **argv)
           if((search_config.search_type != SearchType::BULK_PIT) && (search_config.search_type != SearchType::BULK_EXISTING)){
             read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/turkey_" + 
                                   str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
-            if(use_protected_areas){
-              read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/turkey_" + 
-                                  str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
-            }
           }
           if (search_config.search_type != SearchType::BULK_EXISTING){
             read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" + 
                                   str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
-            if(use_protected_areas){
-              read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/pit_" + 
-                                  str(search_config.grid_square) + "_reservoirs_data.csv"), pairs[i], search_config.grid_square);
-            }
           }
 
           if (!(search_config.search_type == SearchType::BULK_PIT)){
@@ -304,19 +307,11 @@ int main(int nargs, char **argv)
             if(!(search_config.search_type == SearchType::BULK_PIT) && !(search_config.search_type == SearchType::BULK_EXISTING)){
               read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/turkey_" +
                                   str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
-              if(use_protected_areas){
-                read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/turkey_" +
-                                  str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
-              }
             }
 
             if (!(search_config.search_type == SearchType::BULK_EXISTING)){
               read_pit_polygons(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" +
                                   str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
-              if(use_protected_areas){
-                read_pit_polygons(convert_string(file_storage_location + "processing_files/unprotected/reservoirs/pit_" +
-                                  str(neighbor_gs) + "_reservoirs_data.csv"), pairs[i], neighbor_gs);
-              }
             }
           }
         }

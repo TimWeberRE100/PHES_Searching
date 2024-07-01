@@ -17,7 +17,7 @@ vector<double> find_polygon_intersections(int row, vector<GeographicCoordinate> 
     return to_return;
 }
 
-void polygon_to_raster(vector<GeographicCoordinate> &polygon, Model<bool>* raster){
+void polygon_to_raster(vector<GeographicCoordinate> &polygon, Model<bool>* raster, bool set_value){
     for(int row =0; row<raster->nrows(); row++){
         vector<double> polygon_intersections = find_polygon_intersections(row, polygon, raster);
         for(uint j = 0; j<polygon_intersections.size();j++)
@@ -26,16 +26,13 @@ void polygon_to_raster(vector<GeographicCoordinate> &polygon, Model<bool>* raste
             for(int col=polygon_intersections[2*j];col<polygon_intersections[2*j+1];col++){
                 if(!raster->check_within(row, col))
 					continue;
-				if(use_protected_areas)
-					raster->set(row,col,false);
-				else
-                    raster->set(row,col,true);
+				raster->set(row,col,set_value);
 			}
 		}
     }
 }
 
-void read_shp_filter(string filename, Model<bool>* filter){
+void read_shp_filter(string filename, Model<bool>* filter, bool set_value){
 	char *shp_filename = new char[filename.length() + 1];
 	strcpy(shp_filename, filename.c_str());
   if(!file_exists(shp_filename)){
@@ -77,7 +74,7 @@ void read_shp_filter(string filename, Model<bool>* filter){
 	    }
 	    search_config.logger.debug(to_string((int)relevant_polygons.size()) + " polygons imported from " + filename);
 	    for(uint i = 0; i<relevant_polygons.size(); i++){
-            polygon_to_raster(relevant_polygons[i], filter);
+            polygon_to_raster(relevant_polygons[i], filter, set_value);
 	    }
     }else{
     	throw(1);

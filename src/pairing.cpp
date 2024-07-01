@@ -689,7 +689,7 @@ int main(int nargs, char **argv) {
   write_rough_pair_data_header(csv_data_file);
   
   pairing(upper_reservoirs, lower_reservoirs, csv_file, csv_data_file, true);
-  if (search_config.search_type.existing() || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::TURKEY)
+  if (search_config.search_type.existing() || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::TURKEY || (use_protected_areas && search_config.search_type == SearchType::GREENFIELD))
     pairing(lower_reservoirs, upper_reservoirs, csv_file, csv_data_file);
 
   int total = 0;

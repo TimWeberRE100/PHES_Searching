@@ -92,7 +92,7 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
 			for(int i = 0; i<9; i++){
         string shp_filename = file_storage_location+"input/shapefile_tiles/"+str(neighbors[i])+"_shapefile_tile.shp";
         if(file_exists(shp_filename))
-          read_shp_filter(shp_filename, filter);
+          read_shp_filter(shp_filename, filter, !use_protected_areas);
         else{
           search_config.logger.debug("Couldn't find file " + shp_filename);
           search_config.logger.debug(to_string(i));
@@ -102,7 +102,7 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
         }
 			}
 		}else{
-			read_shp_filter(file_storage_location+filename, filter);
+			read_shp_filter(file_storage_location+filename, filter, true);
 		}
 	}
 	for(int row = 0; row<DEM->nrows(); row++)
@@ -246,7 +246,7 @@ void add_caspian_sea(Model<bool> *pour_points){
 
 	string filename = file_storage_location+"input/global_ocean/caspiansea_4326.shp";
 
-	read_shp_filter(filename,caspian_mask);
+	read_shp_filter(filename,caspian_mask, true);
 
 	for (int row=0; row<pour_points->nrows(); row++)
 		for (int col=0; col<pour_points->ncols(); col++){
@@ -1094,7 +1094,7 @@ int main(int nargs, char **argv) {
 	  ocean_buffer_mask->set_geodata(DEM->get_geodata());
 
 	  std:: string ocean_shp_gs = file_storage_location + "input/global_ocean/ocean_buffer.shp";
-	  read_shp_filter(ocean_shp_gs, ocean_buffer_mask);
+	  read_shp_filter(ocean_shp_gs, ocean_buffer_mask, true);
 
 	  // Filter out all cells that aren't in the ocean buffer
 	  for(int row = 0; row<DEM->nrows(); row++){
@@ -1375,7 +1375,7 @@ int main(int nargs, char **argv) {
 		mining_tenament_mask->set_geodata(DEM->get_geodata());
 
 		std:: string mining_shp_gs = mining_tenament_shp + str(search_config.grid_square) + ".shp";
-		read_shp_filter(mining_shp_gs, mining_tenament_mask);
+		read_shp_filter(mining_shp_gs, mining_tenament_mask, true);
 
 		// If there are no mining tenaments, end the screening. Filter out all cells that aren't in a mining tenament
 		bool mining_cells = false;

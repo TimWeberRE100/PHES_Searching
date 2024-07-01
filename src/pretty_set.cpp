@@ -91,7 +91,7 @@ int main(int nargs, char **argv)
 
 		if(search_config.search_type.single()){
 			ExistingReservoir r = get_existing_reservoir(search_config.name);
-			polygon_to_raster(r.polygon, seen);
+			polygon_to_raster(r.polygon, seen, true);
 		}
 
 		int count = 0;
