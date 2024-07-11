@@ -175,7 +175,7 @@ Model<double>* fill(Model<short>* DEM)
 
 
 
-Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
+Model<bool>* find_ocean(Model<short>* DEM)
 {
 	Model<bool>* ocean = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	ocean->set_geodata(DEM->get_geodata());
@@ -188,22 +188,22 @@ Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
 	for (int row=0; row<DEM->nrows()-1;row++) {
 		pq.push(ArrayCoordinateWithHeight_init(row+1, DEM->ncols()-1, (double)DEM->get(row+1,DEM->ncols()-1)));
 		seen->set(row+1,DEM->ncols()-1,true);
-		if(DEM->get(row+1,DEM->ncols()-1)==0 && !filter->get(row+1,DEM->ncols()-1))
+		if(DEM->get(row+1,DEM->ncols()-1)==0)
 			ocean->set(row+1,DEM->ncols()-1,true);
 		pq.push(ArrayCoordinateWithHeight_init(row, 0, (double)DEM->get(row,0)));
 		seen->set(row,0,true);
-		if(DEM->get(row,0)==0 && !filter->get(row,0))
+		if(DEM->get(row,0)==0)
 			ocean->set(row,0,true);
 	}
 
 	for (int col=0; col<DEM->ncols()-1;col++) {
 		pq.push(ArrayCoordinateWithHeight_init(DEM->nrows()-1, col, (double)DEM->get(DEM->ncols()-1,col)));
 		seen->set(DEM->nrows()-1,col,true);
-		if(DEM->get(DEM->ncols()-1,col)==0 && !filter->get(DEM->ncols()-1,col))
+		if(DEM->get(DEM->ncols()-1,col)==0)
 			ocean->set(DEM->ncols()-1,col,true);
 		pq.push(ArrayCoordinateWithHeight_init(0, col+1, (double)DEM->get(0,col+1)));
 		seen->set(0,col+1,true);
-		if(DEM->get(0,col+1)==0 && !filter->get(0,col+1))
+		if(DEM->get(0,col+1)==0)
 			ocean->set(0,col+1,true);
 	}
 
@@ -227,8 +227,7 @@ Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
 			seen->set(neighbor.row,neighbor.col,true);
 
 			if (neighbor.h<=EPS && neighbor.h>=-EPS && ocean->get(c.row,c.col)==true) {
-				if (!filter->get(neighbor.row, neighbor.col))
-					ocean->set(neighbor.row,neighbor.col,true);
+				ocean->set(neighbor.row,neighbor.col,true);
 				q.push(neighbor);
 			}
 			else {
@@ -238,6 +237,17 @@ Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
 	}
 	delete seen;
 	return ocean;
+}
+
+void apply_filter_to_ocean(Model<bool>* ocean, Model<bool>* filter){
+	for(int row=0; row<ocean->nrows()-1;row++){
+		for (int col=0; col<ocean->ncols(); col++){
+			if (filter->get(row,col)){
+				ocean->set(row,col,false);
+			}
+		}
+	}
+	return;
 }
 
 void add_caspian_sea(Model<bool> *pour_points){
@@ -1087,13 +1097,17 @@ int main(int nargs, char **argv) {
     delete DEM_filled_no_flat;
 
     if(search_config.search_type == SearchType::OCEAN){
-      // Create a mask of all ocean buffers within grid square (used to exclude anomalous reservoirs further than 5km from coast)
+	  // Create a mask of all ocean buffers within grid square (used to exclude anomalous reservoirs further than 5km from coast)
 	  t_usec = walltime_usec();
+
+      // Ocean must be found before applying filter, otherwise filters on the border of the DEM will block the ocean finding
+      pour_points = find_ocean(DEM);
+	  add_caspian_sea(pour_points);
 
 	  Model<bool> *ocean_buffer_mask = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	  ocean_buffer_mask->set_geodata(DEM->get_geodata());
 
-	  std:: string ocean_shp_gs = file_storage_location + "input/global_ocean/ocean_buffer.shp";
+	  std:: string ocean_shp_gs = file_storage_location + "input/global_ocean/global_ocean_protected.shp";
 	  read_shp_filter(ocean_shp_gs, ocean_buffer_mask, true);
 
 	  // Filter out all cells that aren't in the ocean buffer
@@ -1117,9 +1131,8 @@ int main(int nargs, char **argv) {
 		filter->write(file_storage_location+"debug/filter/"+str(search_config.grid_square)+"_filter.tif", GDT_Byte);
 	  }
 	  delete ocean_buffer_mask;
-	  
-      pour_points = find_ocean(DEM, filter);
-	  add_caspian_sea(pour_points);
+
+	  apply_filter_to_ocean(pour_points, filter);
 
       if (search_config.logger.output_debug()) {
         printf("\nOcean\n");
