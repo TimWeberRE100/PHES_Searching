@@ -1,17 +1,11 @@
 import os
 import pandas as pd
 from fastkml import kml
-from shapely.geometry import shape
-from pygeoif.geometry import MultiPolygon, Point
+from shapely.geometry import shape, MultiPolygon, Point
+#from pygeoif.geometry import MultiPolygon, Point
 from tqdm import tqdm
 from copy import deepcopy
-
-import os
-import pandas as pd
-from fastkml import kml
-from shapely.geometry import shape
-from pygeoif.geometry import MultiPolygon, Point
-from tqdm import tqdm
+import logging    
 
 categories = {
     'Greenfield': '',
@@ -56,6 +50,8 @@ def check_overlap_within_category(category, size, non_overlapping_reservoirs, no
             for poly in non_overlapping_reservoirs[category]['protected']:
                 if res_id != poly[0]:
                     continue
+                if "OCEAN" in res_id or "RIVER" in res_id:
+                    continue
                 if (any(check_overlap(poly[1][0], existing_poly[1][0]) for existing_poly in non_overlapping_reservoirs[category]['all'])):
                     overlap = True
                     break
@@ -78,6 +74,8 @@ def check_overlap_within_category(category, size, non_overlapping_reservoirs, no
         for res_id in res_ids:
             for poly in non_overlapping_reservoirs[category]['unprotected']:
                 if res_id != poly[0]:
+                    continue
+                if "OCEAN" in res_id or "RIVER" in res_id:
                     continue
                 if (any(check_overlap(poly[1][0], existing_poly[1][0]) for existing_poly in non_overlapping_reservoirs[category]['all'])):
                     overlap = True
@@ -113,6 +111,8 @@ def check_overlap_across_categories(protection_str, size, non_overlapping_reserv
                 for poly in non_overlapping_reservoirs[category]['protected']:
                     if res_id != poly[0]:
                         continue
+                    if "OCEAN" in res_id or "RIVER" in res_id:
+                        continue
                     if (any(check_overlap(poly[1][0], existing_poly[1][0]) for existing_poly in non_overlapping_reservoirs['Totals'][protection_str])):
                         overlap = True
                         break
@@ -137,6 +137,8 @@ def check_overlap_across_categories(protection_str, size, non_overlapping_reserv
             for res_id in res_ids:
                 for poly in non_overlapping_reservoirs[category]['unprotected']:
                     if res_id != poly[0]:
+                        continue
+                    if "OCEAN" in res_id or "RIVER" in res_id:
                         continue
                     if (any(check_overlap(poly[1][0], existing_poly[1][0]) for existing_poly in non_overlapping_reservoirs['Totals'][protection_str])):
                         overlap = True
@@ -173,8 +175,11 @@ def get_points_and_polygons(kml_doc):
     return points, polygons
 
 def check_overlap(poly1, poly2):
-    #print(poly1, poly2)
-    return poly1.intersects(poly2)
+    try:
+        return poly1.intersects(poly2)
+    except Exception as e:
+        print(f"Skipped intersection: {e}")
+        return True
 
 def create_nested_dict(template):
     return {cat: deepcopy(template) for cat in categories.keys()}
@@ -208,15 +213,19 @@ def process_grid_square(lat, lon, base_dir):
 
                         res_ids = name.split(' & ')
                         for res_id in res_ids:
+                            if "OCEAN" in res_id or "RIVER" in res_id:
+                                continue
                             if res_id in polygons:
                                 for poly in polygons[res_id]:
-                                    if any(check_overlap(poly, existing_poly[1]) for existing_poly in non_overlapping_reservoirs[category][prot]):
+                                    if any(check_overlap(poly, existing_poly[1][0]) for existing_poly in non_overlapping_reservoirs[category][prot]):
                                         grid_square_overlap[category][prot] = True
                                         break
 
                         if not grid_square_overlap[category][prot]:
-                            non_overlapping_reservoirs[category][prot].append((res_ids[0],polygons[res_ids[0]]))
-                            non_overlapping_reservoirs[category][prot].append((res_ids[1],polygons[res_ids[1]]))
+                            if not (("OCEAN" in res_ids[0]) or ("RIVER" in res_ids[0])):                        
+                                non_overlapping_reservoirs[category][prot].append((res_ids[0],polygons[res_ids[0]]))
+                            if not (("OCEAN" in res_ids[1]) or ("RIVER" in res_ids[1])):
+                                non_overlapping_reservoirs[category][prot].append((res_ids[1],polygons[res_ids[1]]))
                             non_overlapping_points[category][prot].append((name, energy))
                             grid_square_energy_potential[category][prot] += energy
                             grid_square_count[category][prot] += 1
@@ -239,6 +248,10 @@ def process_grid_square(lat, lon, base_dir):
     return grid_square_energy_potential, grid_square_count
 
 def main(task_list_file, base_dir, output_dir):
+    original_log_level = logging.getLogger().getEffectiveLevel()
+
+    logging.disable(logging.ERROR)
+
     task_list = read_task_list(task_list_file)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -250,7 +263,7 @@ def main(task_list_file, base_dir, output_dir):
         lon_str = ew + str(abs(int(task[-2]))).zfill(3)
 
         energy_potential, count = process_grid_square(lat_str, lon_str, base_dir)
-        print(energy_potential['Greenfield']['unprotected'], count['Greenfield']['unprotected'])
+        #print(energy_potential['Greenfield']['unprotected'], count['Greenfield']['unprotected'])
 
         output_file = os.path.join(output_dir, f'{lat_str}_{lon_str}_potential.csv')
         temp_ls = []
@@ -265,9 +278,52 @@ def main(task_list_file, base_dir, output_dir):
                 temp_ls.append(row_dict)
         df = pd.DataFrame(temp_ls)
         df.to_csv(output_file, index=False)
+    
+    logging.disable(original_log_level)
+
+def summarise_from_tasklist(grid_square_results_dir, summary_output_dir, summary_task_list):
+    task_list = read_task_list(summary_task_list)
+    if not os.path.exists(summary_output_dir):
+        os.makedirs(summary_output_dir)
+
+    # Create empty dataframe
+    temp_ls = []
+    for category, _ in categories.items():
+            for prot in protection:
+                row_dict = {
+                    'Category': category,
+                    'Protected?': prot,
+                    'Energy Potential': 0,
+                    'Count': 0
+                }
+                temp_ls.append(row_dict)
+    summary_df = pd.DataFrame(temp_ls)
+
+    for task in tqdm(task_list):
+        task = task.strip().split(" ")
+        ns = "n" if int(task[-1]) >= 0 else "s"
+        ew = "e" if int(task[-2]) >= 0 else "w"
+        lat_str = ns + str(abs(int(task[-1]))).zfill(2)
+        lon_str = ew + str(abs(int(task[-2]))).zfill(3)
+
+        grid_square_file = os.path.join(grid_square_results_dir, f'{lat_str}_{lon_str}_potential.csv')
+
+        grid_square_df = pd.read_csv(grid_square_file)
+        
+        grid_square_df_num = grid_square_df.select_dtypes(include='number')
+        summary_df_num = summary_df.select_dtypes(include='number')
+        sum_df = summary_df_num.add(grid_square_df_num, fill_value=0)
+
+        summary_df[sum_df.columns] = sum_df
+
+    summary_file = os.path.join(summary_output_dir,'Global_Potential_Summary.csv')
+    summary_df.to_csv(summary_file)
 
 if __name__ == "__main__":
-    task_list_file = './task_lists/greenfield_test_tasks.txt'
+    task_list_file = './task_lists/world_potential_tasks.txt'
+    summary_task_list = './task_lists/world_tasks_fabdem.txt'
     base_dir = './output'
     output_dir = './Results/Potential'
-    main(task_list_file, base_dir, output_dir)
+    summary_output_dir = './Results'
+    #main(task_list_file, base_dir, output_dir)
+    summarise_from_tasklist(output_dir, summary_output_dir, summary_task_list)
