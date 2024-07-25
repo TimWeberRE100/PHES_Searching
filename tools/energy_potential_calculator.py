@@ -154,13 +154,18 @@ def check_overlap_across_categories(protection_str, size, non_overlapping_reserv
 
     return grid_square_energy_potential, grid_square_count, non_overlapping_reservoirs
 
-def get_points_and_polygons(kml_doc):
+def get_points_and_polygons(kml_doc, included_countries):
     points = []
     polygons = {}
     for document in kml_doc.features():
         for folder in document.features():
             for placemark in folder.features():
                 if isinstance(placemark.geometry, Point):
+                    country = [data.value for data in placemark.extended_data.elements if data.name == "Country"][0]
+            
+                    if (country not in included_countries) and included_countries:
+                        continue
+
                     name = placemark.name
                     energy = int([data.value for data in placemark.extended_data.elements if data.name == "Energy"][0])
                     points.append((name, energy))
@@ -184,7 +189,7 @@ def check_overlap(poly1, poly2):
 def create_nested_dict(template):
     return {cat: deepcopy(template) for cat in categories.keys()}
 
-def process_grid_square(lat, lon, base_dir):
+def process_grid_square(lat, lon, base_dir, included_countries):
     system_sizes = [
         '5000GWh_2000h', '5000GWh_200h', '1500GWh_60h',
         '500GWh_50h', '150GWh_50h', '50GWh_18h',
@@ -206,7 +211,7 @@ def process_grid_square(lat, lon, base_dir):
 
                 if os.path.exists(dir_path):
                     kml_doc = parse_kml(dir_path)
-                    points, polygons = get_points_and_polygons(kml_doc)
+                    points, polygons = get_points_and_polygons(kml_doc, included_countries)
 
                     for name, energy in points:
                         grid_square_overlap = create_nested_dict(protection_dict_bool_template)
@@ -247,7 +252,7 @@ def process_grid_square(lat, lon, base_dir):
 
     return grid_square_energy_potential, grid_square_count
 
-def main(task_list_file, base_dir, output_dir):
+def main(task_list_file, base_dir, output_dir, included_countries):
     original_log_level = logging.getLogger().getEffectiveLevel()
 
     logging.disable(logging.ERROR)
@@ -262,7 +267,7 @@ def main(task_list_file, base_dir, output_dir):
         lat_str = ns + str(abs(int(task[-1]))).zfill(2)
         lon_str = ew + str(abs(int(task[-2]))).zfill(3)
 
-        energy_potential, count = process_grid_square(lat_str, lon_str, base_dir)
+        energy_potential, count = process_grid_square(lat_str, lon_str, base_dir, included_countries)
         #print(energy_potential['Greenfield']['unprotected'], count['Greenfield']['unprotected'])
 
         output_file = os.path.join(output_dir, f'{lat_str}_{lon_str}_potential.csv')
@@ -316,14 +321,19 @@ def summarise_from_tasklist(grid_square_results_dir, summary_output_dir, summary
 
         summary_df[sum_df.columns] = sum_df
 
-    summary_file = os.path.join(summary_output_dir,'Global_Potential_Summary.csv')
+    summary_file = os.path.join(summary_output_dir,'EU_Potential_Summary.csv')
     summary_df.to_csv(summary_file)
 
 if __name__ == "__main__":
-    task_list_file = './task_lists/world_potential_tasks.txt'
-    summary_task_list = './task_lists/world_tasks_fabdem.txt'
+    task_list_file = './task_lists/EU_tasklist.txt'
+    summary_task_list = './task_lists/EU_tasklist.txt'
     base_dir = './output'
-    output_dir = './Results/Potential'
+    output_dir = './Results/Potential/EU'
     summary_output_dir = './Results'
-    #main(task_list_file, base_dir, output_dir)
+
+    included_countries = ['Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 
+                          'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands', 'Poland', 'Portugal', 
+                          'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden']
+
+    main(task_list_file, base_dir, output_dir, included_countries)
     summarise_from_tasklist(output_dir, summary_output_dir, summary_task_list)
