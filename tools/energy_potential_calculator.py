@@ -321,19 +321,21 @@ def summarise_from_tasklist(grid_square_results_dir, summary_output_dir, summary
 
         summary_df[sum_df.columns] = sum_df
 
-    summary_file = os.path.join(summary_output_dir,'EU_Potential_Summary.csv')
+    summary_file = os.path.join(summary_output_dir,'BruneiDarussalam_Potential_Summary.csv')
     summary_df.to_csv(summary_file)
 
 if __name__ == "__main__":
-    task_list_file = './task_lists/EU_tasklist.txt'
-    summary_task_list = './task_lists/EU_tasklist.txt'
+    task_list_file = './task_lists/ASEAN_tasklist_fabdem.txt'
+    summary_task_list = './task_lists/ASEAN_tasklist_fabdem.txt'
     base_dir = './output'
-    output_dir = './Results/Potential/EU'
-    summary_output_dir = './Results'
+    output_dir = './Results/Potential/ASEAN/BruneiDarussalam'
+    summary_output_dir = './Results/Potential/ASEAN'
 
-    included_countries = ['Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 
+    """ included_countries = ['Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 
                           'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands', 'Poland', 'Portugal', 
-                          'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden']
+                          'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden'] """
+    #included_countries = ['Philippines', 'Malaysia', 'Singapore', 'Myanmar', "Lao People's Democratic Republic", 'Thailand', 'Timor-Leste','Vietnam', 'Brunei Darussalam', 'Cambodia', 'Indonesia']
+    included_countries = ['Brunei Darussalam']
 
     main(task_list_file, base_dir, output_dir, included_countries)
     summarise_from_tasklist(output_dir, summary_output_dir, summary_task_list)
