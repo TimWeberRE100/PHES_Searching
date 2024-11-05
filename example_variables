@@ -1,12 +1,12 @@
 // Search Driver
-tasks_file = task_lists/world_tasks_fabdem.txt;				// File with list of cells to do line by line in format <lon> <lat> task_lists/world_pit_tasks_fabdem.txt world_ocean_tasks_fabdem.txt
+tasks_file = ./task_lists/S_TH_tasks_fabdem.txt;				// File with list of cells to do line by line in format <lon> <lat> task_lists/world_pit_tasks_fabdem.txt world_ocean_tasks_fabdem.txt input/existing_reservoirs/Cambodia/BlueShp2/tasks.txt;input/existing_reservoirs/MekongShp/tasks.txt;
 processes_file = processes;		// File with list of processes to complete
-existing_reservoirs_csv = US/230306/detailsVol.csv;
-existing_reservoirs_shp = US/230306/Bluefield.shp;
-existing_reservoirs_shp_names = US/230306/names.csv;
-use_tiled_bluefield = 1;  // 0 for false, 1 for true
-use_tiled_rivers = 0;  // 0 for false, 1 for true (if true, above shps are ignored)
-use_protected_areas = 0; // 0 to include protected areas in filter, 1 to include non-protected areas in the filter
+//existing_reservoirs_csv = MRC_PRPInputs/details.csv;
+existing_reservoirs_shp = Global_Bluefield_2024/Global_Bluefield_2024_POIData.shp;
+//existing_reservoirs_shp_names = MRC_PRPInputs/names.csv;
+use_tiled_bluefield = 0;  // 0 for false, 1 for true
+use_tiled_rivers = 1;  // 0 for false, 1 for true (if true, above shps are ignored)
+use_protected_areas = 1; // 0 to include protected areas in filter, 1 to include non-protected areas in the filter
 
 // GPKG Tiling
 gpkg_path = preprocessing_files/brownfield/global_mining_tenements.gpkg;       // Path to the GPKG file containing global mining tenament polygons
@@ -32,17 +32,19 @@ min_max_dam_height = 5.0;		// Minimum maximum dam height (m) (Before overlapping
 
 filter = use_world_urban;						// Use world urban data from tiffs stored in fileformat input/WORLD_URBAN/55H_hbase_human_built_up_and_settlement_extent_geographic_30m
 filter = use_tiled_filter;						// Use shapefile filters output from shapefile_tiling
-filter_to_tile = input/filters/CLUM/CLUM_541-550-552_WGS84_2020_cleaned.shp;	// Location of shapefile to be tiled
-filter_to_tile = input/filters/CAPAD/CAPAD2022_marine.shp;
-filter_to_tile = input/filters/CAPAD/CAPAD2022_terrestrial.shp;
-filter_to_tile = input/filters/WPAD/WDPA_Jun2023_Public_shp-polygons0.shp;
-filter_to_tile = input/filters/WPAD/WDPA_Jun2023_Public_shp-polygons1.shp;
-filter_to_tile = input/filters/WPAD/WDPA_Jun2023_Public_shp-polygons2.shp;
-filter_to_tile = input/filters/Polar30kmBufferFilter/Polar30minBuff_fishnet.shp;
+//filter_to_tile = input/filters/Cambodia/2/northernBorderfixed/Cambodia_4326_fixed.shp;
+//filter_to_tile = input/filters/Mekong/Mekong_filter_4326.shp;
+//filter_to_tile = input/filters/Mekong/S_TH.shp;
+//filter_to_tile = input/filters/CLUM/CLUM_541-550-552_WGS84_2020_cleaned.shp;	// Location of shapefile to be tiled
+//filter_to_tile = input/filters/CAPAD/CAPAD2022_marine.shp;
+//filter_to_tile = input/filters/CAPAD/CAPAD2022_terrestrial.shp;
+//filter_to_tile = input/filters/WPAD/WDPA_Jun2023_Public_shp-polygons0.shp;
+//filter_to_tile = input/filters/WPAD/WDPA_Jun2023_Public_shp-polygons1.shp;
+//filter_to_tile = input/filters/WPAD/WDPA_Jun2023_Public_shp-polygons2.shp;
+//filter = input/filters/Polar30kmBufferFilter/Polar30minBuff_edit_fishnet.shp;
 
 dam_wall_heights = 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150;			//  Wall heights to test and export in greenfield search
-
-depression_depth_min = 10;      // Minimum depth of depressions (m) for mining pit and turkey's nest screenings
+//dam_wall_heights = 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
 pit_lake_relative_depth = 0.10;  // Pit lakes typically have a relative depth (maximum depth : diameter) of between 10% - 40% (https://www.water.wa.gov.au/__data/assets/pdf_file/0020/4970/96278.pdf). Diameter is based on a circle with the same surface area as the pit lake.
 existing_relative_depth = 0.05; // Relative depth of existing lakes/reservoirs (Bluefield)
 
@@ -59,13 +61,15 @@ max_head = 1600;			    // Maximum head (m) to be considered a potential pair
 min_pair_water_rock = 1.5;		// Minimum pair water to rock ratio based on interpolated values
 min_slope = 0.05;				// Minimum slope based on interpolated nearest point seperation between two reservoirs
 min_pp_slope = 0.03;			// Minimum slope based on pourpoint seperation between two reservoirs
+//min_slope = 0.03;				// BLUEFIELD and BROWNFIELD and TURKEY
+//min_pp_slope = 0.02;            // BLUEFIELD and BROWNFIELD and TURKEY
 max_lowers_per_upper = 100;		// Maximum number of lower reservoirs to keep per upper reservoir
 tolerance_on_FOM = 0.1;
-max_head_variability = 0.5;		// Maximum amount the head can vary during water transfer (Default 0.35)
+max_head_variability = 0.5		// Maximum amount the head can vary during water transfer (Default 0.35)
 num_altitude_volume_pairs = 10;	// Number of altitude-volume pairs provided with an existing pit
 pit_height_resolution = 1;		// Height resolution of top and bottom of pit in metres
 max_bluefield_surface_area_ratio = 0.5;  // Maximum surface area of new reservoir relative to existing reservoir
-river_flow_volume_ratio = 5;  // Minimum ratio of annual river flow to reservoir volume for seasonal
+river_flow_volume_ratio = 365;  // Minimum ratio of annual river flow to reservoir volume for seasonal, variables old has a different value (5)
 
 // Common
 gravity = 9.8;					// Acceleration due to gravity (m/s/s)
@@ -99,18 +103,28 @@ good_colour = 255, 0, 0, 255; 		// Opacity, Blue, Green, Red
 bad_colour = 255, 200, 200, 255;
 premium_colour_aa = 255, 90, 0, 133
 premium_colour_aaa = 255, 107, 0, 84
-upper_colour = #88F0AA14;
-lower_colour = #88F03C14;
+upper_colour = #50F0F014;
+lower_colour = #50F00014;
 
 // Reservoir sizings
-test = 5000, 200;      
-test = 1500, 60;				// Test in format {Volume (GL), Storage time (h)}
-test = 500, 50;
-test = 150, 50;
-test = 50, 18;
+//test = 5000, 2000;              // Seasonal (rivers) only
+//test = 5000, 200;      
+//test = 1500, 60;				// Test in format {Volume (GL), Storage time (h)}
+//test = 500, 50;
+//test = 150, 50;
+//test = 50, 18;
 test = 15, 18;
-test = 5, 18;
-test = 2, 6; 
+//test = 5, 18;
+test = 17, 21;
+test = 20, 24;
+test = 22, 27;
+test = 25, 30;
+test = 27, 33;
+test = 30, 36;
+test = 35, 42;
+test = 40, 48;
+test = 45, 54;
+test = 50, 60;
 
 // Class Cutoffs
 ? = 176, 16;                        // Premium class AAA
@@ -122,8 +136,10 @@ D = 933, 82;
 E = 1066, 94;
 
 // Class Cutoffs - seasonal (rivers)
-//A = 533, 1;						// Class cutoffs in the format {Power Cost, Storage Cost}
-//B = 666, 2;
-//C = 800, 4;
-//D = 933, 7;
-//E = 1066, 10;
+//? = 176, 1;                        // Premium class AAA
+//@ = 357, 2;                        // Premium class AA
+//A = 533, 3;						// Class cutoffs in the format {Power Cost, Storage Cost}
+//B = 666, 4;
+//C = 800, 5;
+//D = 933, 5;
+//E = 1066, 6;

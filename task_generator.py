@@ -36,9 +36,9 @@ if __name__ == '__main__':
     DEM_type = input("SRTM or FABDEM task list?")
 
     if DEM_type == "SRTM":
-        folder_path = './input/DEMs'
+        folder_path = '../PHES_Searching_Global/input/DEMs'
     elif DEM_type == "FABDEM":
-        folder_path = './input/FABDEMs'
+        folder_path = '../PHES_Searching_Global/input/FABDEMs'
     else:
         print("Invalid DEM type.")
         exit()
