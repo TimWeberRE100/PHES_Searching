@@ -32,6 +32,7 @@ extern string existing_reservoirs_shp;
 extern string existing_reservoirs_shp_names;
 extern bool use_tiled_bluefield;
 extern bool use_tiled_rivers;
+extern bool use_protected_areas;
 
 // GPKG Tiling
 extern std::string gpkg_path;  // Path to the GPKG file containing global mining tenament polygons
@@ -41,6 +42,7 @@ extern std::string mining_tenament_shp; // File path and naming convention used 
 // General
 extern string file_storage_location; // Where to look for input files and store
                                      // output files
+extern string dem_storage_location;
 extern int border;       // Number of cells to add as border around DEM square
 extern double dambatter; // Slope on sides of dam
 extern double cwidth;    // Width of top of dam
@@ -72,7 +74,13 @@ extern vector<double> dam_wall_heights; //  Wall heights to test and export
 
 extern int depression_depth_min; // Minimum depth of depressions (m) for mining pit and turkey's nest screenings
 extern double pit_lake_relative_depth;  // Pit lakes typically have a relative depth (maximum depth : diameter of circle with surface area) of between 10% - 40%
-extern double pit_lake_relative_area;    // The ratio of surface area at the bottom of the pit vs the surface of the lake
+extern double existing_relative_depth;
+
+extern int max_pit_area;
+
+extern int max_turkey_area;  // Maximum area (ha) of a turkey nest screening polygon
+extern int max_turkey_slope;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
+extern int max_turkey_dam_height; // Maximum height (m) of turkey nest dams
 
 // Pairing
 extern int min_head; // Minimum head (m) to be considered a potential pair
@@ -105,6 +113,8 @@ extern int max_wall_height;
 // Output
 extern int good_colour[4];
 extern int bad_colour[4];
+extern int premium_colour_aa[4];
+extern int premium_colour_aaa[4];
 extern string upper_colour;
 extern string lower_colour;
 extern double volume_accuracy;            // Maximum ratio error on final volume
@@ -128,6 +138,11 @@ extern double sea_power_scaling;
 extern double ref_marine_cost;
 extern double ref_power;
 extern double ref_head;
+
+// Other settings
+extern int model_size;
+extern int tile_overlap;
+extern std::string protected_area_folder;
 
 struct Test {
   double energy_capacity;
@@ -157,9 +172,6 @@ struct CategoryCutoff {
     return category > o.category;
   }
 };
-
-const int model_size = (dem_type=="SRTM") ? 3601 : 3600;
-const int tile_overlap = (dem_type=="SRTM") ? 1 : 0;
 
 extern vector<CategoryCutoff> category_cutoffs;
 
@@ -203,6 +215,7 @@ struct BigModel {
 #include "mining_pits.h"
 
 #include "csv.h"
+#include "turkey.hpp"
 
 int convert_to_int(double f);
 double max(vector<double> a);
@@ -230,5 +243,8 @@ RoughBfieldReservoir existing_reservoir_to_rough_reservoir(ExistingReservoir r);
 vector<ExistingPit> get_pit_details(GridSquare grid_square);
 ExistingPit get_pit_details(string pitname);
 RoughBfieldReservoir pit_to_rough_reservoir(BulkPit pit, GeographicCoordinate lowest_point);
+std::string get_class(char category);
+std::string get_class_order(char category);
+RoughTurkeyReservoir turkey_to_rough_reservoir(TurkeyCharacteristics turkey);
 
 #endif

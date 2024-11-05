@@ -20,7 +20,7 @@ int main(int nargs, char **argv)
 	Model<bool>* extent = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	extent->set_geodata(DEM->get_geodata());
 	string rs = convert_string(file_storage_location + "input/existing_reservoirs/" + existing_reservoirs_shp);
-	read_shp_filter(rs, extent);
+	read_shp_filter(rs, extent, true);
 	
 	int min_elevation = 100000000;
 

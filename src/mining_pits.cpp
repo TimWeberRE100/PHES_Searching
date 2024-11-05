@@ -92,13 +92,16 @@ void find_pit_lake_depth_characteristics(int pit_lake_max_depth, double pit_lake
 	return;
 }
 
-void model_pit_lakes(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *depression_mask, 
+bool model_pit_lakes(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *depression_mask, 
 						Model<bool> *seen_pl, Model<bool> *seen_d, vector<ArrayCoordinate> &individual_pit_lake_points, Model<short> *DEM){
 	int seed_row = pit.seed_point.row;
 	int seed_col = pit.seed_point.col;	
 
 	double pit_lake_max_area = pit_area_calculator(seed_row, seed_col, pit_lake_mask, depression_mask, seen_pl, seen_d, individual_pit_lake_points, pit.overlap, pit.seed_point);
 	pit.pit_lake_area = pit_lake_max_area;
+
+	if (pit_lake_max_area > double(max_pit_area))
+		return false;
 
 	// Estimate the lowest point of the pit lake
 	Circle pole_of_inaccessibility = find_pole_of_inaccessibility(individual_pit_lake_points);
@@ -140,18 +143,21 @@ void model_pit_lakes(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *depr
 			pit.fill_depths[i] += pit_lake_max_depth;
 		}
 
-	return;
+	return true;
 }
 
-void model_depression(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *depression_mask, 
+bool model_depression(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *depression_mask, 
 						Model<bool> *seen_d, Model<bool> *seen_pl, std::vector<ArrayCoordinate> &individual_depression_points, Model<short> *DEM) {
 
 	int seed_row = pit.seed_point.row;
 	int seed_col = pit.seed_point.col;	
 				
-	pit_area_calculator(seed_row, seed_col, depression_mask, pit_lake_mask, seen_d, seen_pl, individual_depression_points, pit.overlap, pit.seed_point);
+	double total_pit_area = pit_area_calculator(seed_row, seed_col, depression_mask, pit_lake_mask, seen_d, seen_pl, individual_depression_points, pit.overlap, pit.seed_point);
 	
-	std::vector<GeographicCoordinate> depression_polygon = convert_poly(find_edge(individual_depression_points, true));
+	if (total_pit_area > double(max_pit_area))
+		return false;
+	
+	std::vector<GeographicCoordinate> depression_polygon = convert_poly(find_edge(individual_depression_points, false),0.5);
 	
 	// Find lowest point on pit edge
 	int lowest_edge_elevation = INT_MAX;
@@ -213,5 +219,5 @@ void model_depression(BulkPit &pit, Model<bool> *pit_lake_mask, Model<bool> *dep
 		pit.fill_depths[i] += pit.fill_elevations[i] - depression_min_elevation;
 	}
 
-	return;
+	return true;
 }

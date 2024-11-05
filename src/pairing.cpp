@@ -12,6 +12,7 @@ vector<GeographicCoordinate> find_points_to_test(RoughReservoir* &reservoir,
                                                  double &wall_height, ArrayCoordinate &pour_point) {
   vector<GeographicCoordinate> bound;
   if (RoughGreenfieldReservoir *gr = dynamic_cast<RoughGreenfieldReservoir *>(reservoir)) {
+
     array<ArrayCoordinate, directions.size()> one_point = {pour_point, pour_point, pour_point,
                                                            pour_point, pour_point, pour_point,
                                                            pour_point, pour_point};
@@ -33,7 +34,10 @@ vector<GeographicCoordinate> find_points_to_test(RoughReservoir* &reservoir,
                            inv_wall_height_interval});
     }
     bound.push_back(convert_coordinates(pour_point));
-  } else {
+  } else if (RoughTurkeyReservoir *tr = dynamic_cast<RoughTurkeyReservoir *>(reservoir)) {
+    for (ArrayCoordinate c : tr->shape_bound)
+      bound.push_back(convert_coordinates(c));
+  }else {
     RoughBfieldReservoir *br = dynamic_cast<RoughBfieldReservoir *>(reservoir);
     for (ArrayCoordinate c : br->shape_bound)
       bound.push_back(convert_coordinates(c));
@@ -47,9 +51,10 @@ double find_least_distance_sqd(RoughReservoir* upper, RoughReservoir* &lower,
   double mindist2 = INF;
   vector<GeographicCoordinate> upper_points =
       find_points_to_test(upper, upper_wall_height, *upper_pour_point);
+  
   vector<GeographicCoordinate> lower_points =
       find_points_to_test(lower, lower_wall_height, *lower_pour_point);
-
+  
   for (uint iu = 0; iu < upper_points.size(); iu++) {
     GeographicCoordinate p1 = upper_points[iu];
     for (uint il = 0; il < lower_points.size(); il++) {
@@ -206,12 +211,14 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
                       double energy_capacity, int storage_time, Pair *pair,
                       int max_FOM) {
   int head = upper->elevation - lower->elevation;
+  
   double required_volume = find_required_volume(energy_capacity, head);
   if ((max(upper->volumes) < required_volume) ||
       (max(lower->volumes) < required_volume * (lower->river ? 5 : 1))) {
     return NULL;
   }
   ExistingPit single_pit;
+
   RoughReservoir greenfield = *upper;
   RoughReservoir pit = *lower;
   if (upper->pit) {
@@ -314,7 +321,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
 
   upper_reservoir.identifier = upper->identifier;
   upper_reservoir.volume = required_volume;
-
+  
   if (!upper->brownfield) {
     upper_reservoir.dam_volume = linear_interpolate(
         upper_dam_wall_height, dam_wall_heights, upper->dam_volumes);
@@ -335,6 +342,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   upper_reservoir.brownfield = upper->brownfield;
   upper_reservoir.river = upper->river;
   upper_reservoir.pit = upper->pit;
+  upper_reservoir.turkey = upper->turkey;
 
   lower_reservoir.identifier = lower->identifier;
   lower_reservoir.volume = required_volume;
@@ -360,6 +368,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
   lower_reservoir.river = lower->river;
   lower_reservoir.pit = lower->pit;
   lower_reservoir.ocean = lower->ocean;
+  lower_reservoir.turkey = lower->turkey;
 
   pair->identifier = upper->identifier + " & " + lower->identifier;
   pair->upper = upper_reservoir;
@@ -377,7 +386,7 @@ Pair *check_good_pair(RoughReservoir* upper, RoughReservoir* lower,
 
   set_FOM(pair);
 
-  if (pair->FOM > max_FOM)
+  if (pair->FOM > max_FOM && (!pair->upper.turkey && !pair->lower.turkey) && (!pair->upper.pit && !pair->lower.pit))
     return NULL;
   return pair;
 }
@@ -449,7 +458,7 @@ void pairing(vector<unique_ptr<RoughReservoir>> &upper_reservoirs,
       if (SQ(head * 0.001) <= min_dist_sqd * SQ(min_pp_slope))
         continue;
 
-
+      
       for (uint itest = 0; itest < tests.size(); itest++) {
         Pair temp_pair;
         int max_FOM =
@@ -461,7 +470,7 @@ void pairing(vector<unique_ptr<RoughReservoir>> &upper_reservoirs,
                             tests[itest].energy_capacity,
                             tests[itest].storage_time, &temp_pair, max_FOM)) {
           temp_pairs[itest].insert(temp_pair);
-
+          
           if ((int)temp_pairs[itest].size() > max_lowers_per_upper ||
               ((search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::SINGLE_PIT)&&
               temp_pairs[itest].size() > 1))
@@ -496,26 +505,31 @@ int main(int nargs, char **argv) {
     if (search_config.search_type.single())
       search_config.grid_square = get_square_coordinate(get_existing_reservoir(search_config.name));
     upper_reservoirs = read_rough_reservoir_data(
-        convert_string(file_storage_location + "processing_files/reservoirs/" +
+        convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        search_config.filename() + "_reservoirs_data.csv"));
     
-    if (search_config.search_type == SearchType::BULK_EXISTING || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::RIVER){
-      
+    if (search_config.search_type == SearchType::BULK_EXISTING || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::RIVER){      
       vector<unique_ptr<RoughReservoir>> greenfield_reservoirs = read_rough_reservoir_data(
-          convert_string(file_storage_location + "processing_files/reservoirs/" +
+          convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                          str(search_config.grid_square) + "_reservoirs_data.csv"));
       for(size_t i = 0; i<greenfield_reservoirs.size(); i++){
         upper_reservoirs.push_back(std::move(greenfield_reservoirs[i]));
       }
     }
+
     if (search_config.search_type == SearchType::SINGLE_PIT) {
       single_pit_details = get_pit_details(search_config.name);
     }
-  } else
+  } else if (search_config.search_type == SearchType::TURKEY) {
+      upper_reservoirs = read_rough_reservoir_data(
+        convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
+                       search_config.search_type.lowers_prefix() + str(search_config.grid_square) + "_reservoirs_data.csv"));
+      
+  } else {
     upper_reservoirs = read_rough_reservoir_data(
-        convert_string(file_storage_location + "processing_files/reservoirs/" +
+        convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        str(search_config.grid_square) + "_reservoirs_data.csv"));
-  
+  }
   GridSquare neighbors[9] = {
       (GridSquare){search_config.grid_square.lat, search_config.grid_square.lon},
       (GridSquare){search_config.grid_square.lat + 1, search_config.grid_square.lon - 1},
@@ -529,32 +543,132 @@ int main(int nargs, char **argv) {
 
   set<string> lower_ids;
   for (int i = 0; i < 9; i++) {
-    try {
-      vector<unique_ptr<RoughReservoir>> temp = read_rough_reservoir_data(convert_string(
-          file_storage_location + "processing_files/reservoirs/" +
-          search_config.search_type.lowers_prefix() + str(neighbors[i]) + "_reservoirs_data.csv"));
-
-      for (uint j = 0; j < temp.size(); j++) {
-        if ((search_config.search_type == SearchType::BULK_EXISTING || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::RIVER) &&
-            lower_ids.contains(temp[j]->identifier))
-          continue;
-
-        lower_ids.insert(temp[j]->identifier);
-        lower_reservoirs.push_back(std::move(temp[j]));
+    if (search_config.search_type == SearchType::TURKEY) {
+      try {
+        // Import greenfield
+        vector<unique_ptr<RoughReservoir>> greenfield_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
+                          str(neighbors[i]) + "_reservoirs_data.csv"));
+        if(use_protected_areas){
+          vector<unique_ptr<RoughReservoir>> unprotected_greenfield_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/unprotected/reservoirs/" +
+                          str(neighbors[i]) + "_reservoirs_data.csv"));
+          for(size_t i = 0; i<unprotected_greenfield_reservoirs.size(); i++){
+            greenfield_reservoirs.push_back(std::move(unprotected_greenfield_reservoirs[i]));
+          }
+        }
+        
+        for(size_t j = 0; j<greenfield_reservoirs.size(); j++)
+          lower_reservoirs.push_back(std::move(greenfield_reservoirs[j]));
+      } catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
+                          str(neighbors[i]) + "_reservoirs_data.csv");
       }
-    } catch (int e) {
-      search_config.logger.debug("Could not import reservoirs from " + file_storage_location +
-                                 "processing_files/reservoirs/" +
-                                 search_config.search_type.lowers_prefix() + str(neighbors[i]) +
-                                 "_reservoirs_data.csv");
+
+      // Import ocean
+      try {
+        vector<unique_ptr<RoughReservoir>> ocean_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/ocean_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv"));
+        if(use_protected_areas){
+          vector<unique_ptr<RoughReservoir>> unprotected_ocean_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/unprotected/reservoirs/ocean_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv"));
+          for(size_t i = 0; i<unprotected_ocean_reservoirs.size(); i++){
+            ocean_reservoirs.push_back(std::move(unprotected_ocean_reservoirs[i]));
+          }
+        }
+
+        for(size_t j = 0; j<ocean_reservoirs.size(); j++)
+          lower_reservoirs.push_back(std::move(ocean_reservoirs[j]));
+
+      } catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/ocean_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv");
+      }
+
+      // Import pits
+      try {
+        vector<unique_ptr<RoughReservoir>> brownfield_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/bulk_pit_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv"));
+        if(use_protected_areas){
+          vector<unique_ptr<RoughReservoir>> unprotected_brownfield_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/unprotected/reservoirs/bulk_pit_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv"));
+          for(size_t i = 0; i<unprotected_brownfield_reservoirs.size(); i++){
+            brownfield_reservoirs.push_back(std::move(unprotected_brownfield_reservoirs[i]));
+          }
+        }
+
+        for(size_t j = 0; j<brownfield_reservoirs.size(); j++)
+          lower_reservoirs.push_back(std::move(brownfield_reservoirs[j]));
+      } catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/bulk_pit_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv");
+      }
+
+      // Import existing
+      try {
+        vector<unique_ptr<RoughReservoir>> existing_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/existing_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv"));
+        if(use_protected_areas){
+          vector<unique_ptr<RoughReservoir>> unprotected_existing_reservoirs = read_rough_reservoir_data(
+            convert_string(file_storage_location + "processing_files/unprotected/reservoirs/existing_" +
+                          str(search_config.grid_square) + "_reservoirs_data.csv"));
+          for(size_t i = 0; i<unprotected_existing_reservoirs.size(); i++){
+            existing_reservoirs.push_back(std::move(unprotected_existing_reservoirs[i]));
+          }
+        }
+
+        for(size_t j = 0; j<existing_reservoirs.size(); j++)
+          lower_reservoirs.push_back(std::move(existing_reservoirs[j]));
+      }  catch(int e) {
+        search_config.logger.debug("Could not import reservoirs from " + 
+                      file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/existing_" +
+                          str(neighbors[i]) + "_reservoirs_data.csv");
+      }
+    } else {
+      try {
+        vector<unique_ptr<RoughReservoir>> temp = read_rough_reservoir_data(convert_string(
+            file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
+            search_config.search_type.lowers_prefix() + str(neighbors[i]) + "_reservoirs_data.csv"));
+        if(use_protected_areas){
+          vector<unique_ptr<RoughReservoir>> unprotected_temp = read_rough_reservoir_data(convert_string(
+            file_storage_location + "processing_files/unprotected/reservoirs/" +
+            search_config.search_type.lowers_prefix() + str(neighbors[i]) + "_reservoirs_data.csv"));
+          for(size_t i = 0; i<unprotected_temp.size(); i++){
+            temp.push_back(std::move(unprotected_temp[i]));
+          }
+        }
+        
+        for (uint j = 0; j < temp.size(); j++) {
+          if ((search_config.search_type == SearchType::BULK_EXISTING || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::RIVER) &&
+              lower_ids.contains(temp[j]->identifier))
+            continue;
+
+          lower_ids.insert(temp[j]->identifier);
+          lower_reservoirs.push_back(std::move(temp[j]));
+        }
+      } catch (int e) {
+        search_config.logger.debug("Could not import reservoirs from " + file_storage_location +
+                                  "processing_files/" + protected_area_folder + "/reservoirs/" +
+                                  search_config.search_type.lowers_prefix() + str(neighbors[i]) +
+                                  "_reservoirs_data.csv");
+      }
     }
   }
+  
   search_config.logger.debug("Read in "+to_string(upper_reservoirs.size())+" uppers");
   search_config.logger.debug("Read in " + to_string(lower_reservoirs.size()) + " lowers");
 
-  mkdir(convert_string(file_storage_location + "output/pairs"), 0777);
+  mkdir(convert_string(file_storage_location + "output/" + protected_area_folder + "/pairs"), 0777);
   FILE *csv_file =
-      fopen(convert_string(file_storage_location + "output/pairs/" +
+      fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/pairs/" +
                            search_config.filename() + "_rough_pairs.csv"),
             "w");
   if (!csv_file) {
@@ -563,9 +677,9 @@ int main(int nargs, char **argv) {
   }
   write_rough_pair_csv_header(csv_file);
 
-  mkdir(convert_string(file_storage_location + "processing_files/pairs"), 0777);
+  mkdir(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/pairs"), 0777);
   FILE *csv_data_file =
-      fopen(convert_string(file_storage_location + "processing_files/pairs/" +
+      fopen(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/pairs/" +
                            search_config.filename() + "_rough_pairs_data.csv"),
             "w");
   if (!csv_data_file) {
@@ -573,9 +687,9 @@ int main(int nargs, char **argv) {
     exit(1);
   }
   write_rough_pair_data_header(csv_data_file);
-
+  
   pairing(upper_reservoirs, lower_reservoirs, csv_file, csv_data_file, true);
-  if (search_config.search_type.existing())
+  if (search_config.search_type.existing() || search_config.search_type == SearchType::BULK_PIT || search_config.search_type == SearchType::TURKEY || (use_protected_areas && search_config.search_type == SearchType::GREENFIELD))
     pairing(lower_reservoirs, upper_reservoirs, csv_file, csv_data_file);
 
   int total = 0;

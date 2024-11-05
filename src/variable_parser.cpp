@@ -8,6 +8,7 @@ string existing_reservoirs_shp;
 string existing_reservoirs_shp_names;
 bool use_tiled_bluefield;
 bool use_tiled_rivers;
+bool use_protected_areas;
 
 // GPKG Tiling
 std::string gpkg_path;  // Path to the GPKG file containing global mining tenament polygons
@@ -16,6 +17,7 @@ std::string mining_tenament_shp;	// File path and naming convention used for the
 
 // General
 string file_storage_location;		// Where to look for input files and store output files
+string dem_storage_location;
 int border;							// Number of cells to add as border around DEM square
 double dambatter;					// Slope on sides of dam
 double cwidth;						// Width of top of dam
@@ -39,7 +41,13 @@ vector<double> dam_wall_heights; 	//  Wall heights to test and export
 
 int depression_depth_min;			// Minimum depth of depressions (m) for mining pit and turkey's nest screenings
 double pit_lake_relative_depth;  // Pit lakes typically have a relative depth (maximum depth : diameter of circle with surface area) of between 10% - 40%
-double pit_lake_relative_area;    // The ratio of surface area at the bottom of the pit vs the surface of the lake
+double existing_relative_depth;
+
+int max_pit_area;
+
+int max_turkey_area;  // Maximum area (ha) of a turkey nest screening polygon
+int max_turkey_slope;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
+int max_turkey_dam_height; // Maximum height (m) of turkey nest dams
 
 // Pairing
 int min_head;						// Minimum head (m) to be considered a potential pair
@@ -64,6 +72,8 @@ int max_wall_height;
 bool output_FOM;			// Whether to output exact FOM or category split
 int good_colour[4];
 int bad_colour[4];
+int premium_colour_aa[4];
+int premium_colour_aaa[4];
 string upper_colour;
 string lower_colour;
 double volume_accuracy;				// Maximum ratio error on final volume
@@ -95,6 +105,11 @@ vector<CategoryCutoff> category_cutoffs;
 double max_bluefield_surface_area_ratio;
 double river_flow_volume_ratio;
 
+// Other settings
+int model_size;
+int tile_overlap;
+std::string protected_area_folder;
+
 void parse_variables(char* filename){
     if(!file_exists(filename)){
 		search_config.logger.error("No file: " + string(filename));
@@ -116,16 +131,27 @@ void parse_variables(char* filename){
 				filter_filenames.push_back(value);
 			if(variable=="filter_to_tile")
 				filter_filenames_to_tile.push_back(value);
-			if(variable=="dem_type")
+			if(variable=="dem_type"){
 				dem_type=value;
+				model_size = (dem_type=="SRTM") ? 3601 : 3600;
+				tile_overlap = (dem_type=="SRTM") ? 1 : 0;
+			}
 			if(variable=="mining_tenament_shp")
 				mining_tenament_shp = value;
 			if(variable=="depression_depth_min")
 				depression_depth_min = stoi(value);
 			if(variable=="pit_lake_relative_depth")
 				pit_lake_relative_depth = stod(value);
-			if(variable=="pit_lake_relative_area")
-				pit_lake_relative_area = stod(value);
+			if(variable=="existing_relative_depth")
+				existing_relative_depth = stod(value);
+			if(variable=="max_pit_area")
+				max_pit_area = stoi(value);
+			if(variable=="max_turkey_area")
+				max_turkey_area = stoi(value);
+			if(variable=="max_turkey_slope")
+				max_turkey_slope = stoi(value);
+			if(variable=="max_turkey_dam_height")
+				max_turkey_dam_height = stoi(value);
 			if(variable=="min_watershed_area"){
 				min_watershed_area = stod(value);
 				stream_threshold = (int)(11.1*min_watershed_area);
@@ -206,6 +232,14 @@ void parse_variables(char* filename){
 				vector<string> t = read_from_csv_file(value);
 				bad_colour[0] = stoi(t[0]);bad_colour[1] = stoi(t[1]);bad_colour[2] = stoi(t[2]);bad_colour[3] = stoi(t[3]);
 			}
+			if(variable=="premium_colour_aa"){
+				vector<string> t = read_from_csv_file(value);
+				premium_colour_aa[0] = stoi(t[0]);premium_colour_aa[1] = stoi(t[1]);premium_colour_aa[2] = stoi(t[2]);premium_colour_aa[3] = stoi(t[3]);
+			}
+			if(variable=="premium_colour_aaa"){
+				vector<string> t = read_from_csv_file(value);
+				premium_colour_aaa[0] = stoi(t[0]);premium_colour_aaa[1] = stoi(t[1]);premium_colour_aaa[2] = stoi(t[2]);premium_colour_aaa[3] = stoi(t[3]);
+			}
 			if(variable=="volume_accuracy")
 				volume_accuracy = stod(value);
 			if(variable=="dam_wall_height_resolution")
@@ -222,6 +256,8 @@ void parse_variables(char* filename){
 				lower_colour = value;
 			if(variable=="file_storage_location")
 				file_storage_location = value;
+			if(variable=="dem_storage_location")
+				dem_storage_location = value;
 			if(variable=="max_head")
 				max_head = stod(value);
 			if(variable=="max_lowers_per_upper")
@@ -265,6 +301,10 @@ void parse_variables(char* filename){
 				use_tiled_bluefield = stoi(value);
 			if(variable=="use_tiled_rivers")
 				use_tiled_rivers = stoi(value);
+			if(variable=="use_protected_areas"){
+				use_protected_areas = stoi(value);
+				protected_area_folder = (!use_protected_areas) ? "unprotected" : "protected";
+			}
 		}
 	}
 }

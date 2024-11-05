@@ -33,5 +33,7 @@ void write_summary_csv(FILE *csv_file, string square_name, string test,
                       int non_overlapping_sites, int num_sites,
                       int energy_capacity);
 void read_pit_polygons(std::string filename, std::vector<Pair> &pairs, GridSquare gs);
+std::string generate_map_url(Pair *pair);
+std::string url_encode(const std::string &value);
 
 #endif

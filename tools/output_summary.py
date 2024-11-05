@@ -60,6 +60,10 @@ def get_site(task):
         type = "ocean_"
     if task[0] == "bulk_pit":
         type = "pit_"
+    if task[0] == "turkey":
+        type = "turkey_"
+    if task[0] == "river":
+        type = "river_"
     return (
         type
         + ns

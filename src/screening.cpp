@@ -5,6 +5,7 @@
 #include "polygons.h"
 #include "reservoir.h"
 #include "mining_pits.h"
+#include "turkey.hpp"
 #include "constructor_helpers.hpp"
 #include "search_config.hpp"
 #include <array>
@@ -46,11 +47,24 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
 {
 	Model<bool>* filter = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	filter->set_geodata(DEM->get_geodata());
+
+	if(use_protected_areas){
+		for (int row=0; row<filter->nrows(); row++)
+			for (int col=0; col<filter->ncols(); col++)
+				filter->set(row,col,true);
+	}
+
 	for(string filename:filenames){
 		if(filename=="use_world_urban"){
 			// Exclude urban filter from bulk_pit searches - some pits (such as Kalgoorlie Super Pit) are right next to urban areas. Mining tenament mask is more accurate at preventing overlap with urban area
 			if (search_config.search_type == SearchType::BULK_PIT)
 				continue;
+
+			// World urban raster for high latitudes has a different shape and will cause segmentation fault
+			// Very tiny population in these latitudes, so just skip filter
+			if (DEM->get_origin().lat > 70.0)
+				continue;
+
 			search_config.logger.debug("Using world urban data as filter");
 			vector<string> done;
 			for(GeographicCoordinate corner: DEM->get_corners()){
@@ -78,7 +92,7 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
 			for(int i = 0; i<9; i++){
         string shp_filename = file_storage_location+"input/shapefile_tiles/"+str(neighbors[i])+"_shapefile_tile.shp";
         if(file_exists(shp_filename))
-          read_shp_filter(shp_filename, filter);
+          read_shp_filter(shp_filename, filter, !use_protected_areas);
         else{
           search_config.logger.debug("Couldn't find file " + shp_filename);
           search_config.logger.debug(to_string(i));
@@ -88,7 +102,7 @@ Model<bool>* read_filter(Model<short>* DEM, vector<string> filenames)
         }
 			}
 		}else{
-			read_shp_filter(file_storage_location+filename, filter);
+			read_shp_filter(file_storage_location+filename, filter, true);
 		}
 	}
 	for(int row = 0; row<DEM->nrows(); row++)
@@ -161,7 +175,7 @@ Model<double>* fill(Model<short>* DEM)
 
 
 
-Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
+Model<bool>* find_ocean(Model<short>* DEM)
 {
 	Model<bool>* ocean = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	ocean->set_geodata(DEM->get_geodata());
@@ -174,22 +188,22 @@ Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
 	for (int row=0; row<DEM->nrows()-1;row++) {
 		pq.push(ArrayCoordinateWithHeight_init(row+1, DEM->ncols()-1, (double)DEM->get(row+1,DEM->ncols()-1)));
 		seen->set(row+1,DEM->ncols()-1,true);
-		if(DEM->get(row+1,DEM->ncols()-1)==0 && !filter->get(row+1,DEM->ncols()-1))
+		if(DEM->get(row+1,DEM->ncols()-1)==0)
 			ocean->set(row+1,DEM->ncols()-1,true);
 		pq.push(ArrayCoordinateWithHeight_init(row, 0, (double)DEM->get(row,0)));
 		seen->set(row,0,true);
-		if(DEM->get(row,0)==0 && !filter->get(row,0))
+		if(DEM->get(row,0)==0)
 			ocean->set(row,0,true);
 	}
 
 	for (int col=0; col<DEM->ncols()-1;col++) {
 		pq.push(ArrayCoordinateWithHeight_init(DEM->nrows()-1, col, (double)DEM->get(DEM->ncols()-1,col)));
 		seen->set(DEM->nrows()-1,col,true);
-		if(DEM->get(DEM->ncols()-1,col)==0 && !filter->get(DEM->ncols()-1,col))
+		if(DEM->get(DEM->ncols()-1,col)==0)
 			ocean->set(DEM->ncols()-1,col,true);
 		pq.push(ArrayCoordinateWithHeight_init(0, col+1, (double)DEM->get(0,col+1)));
 		seen->set(0,col+1,true);
-		if(DEM->get(0,col+1)==0 && !filter->get(0,col+1))
+		if(DEM->get(0,col+1)==0)
 			ocean->set(0,col+1,true);
 	}
 
@@ -213,8 +227,7 @@ Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
 			seen->set(neighbor.row,neighbor.col,true);
 
 			if (neighbor.h<=EPS && neighbor.h>=-EPS && ocean->get(c.row,c.col)==true) {
-				if (!filter->get(neighbor.row, neighbor.col))
-					ocean->set(neighbor.row,neighbor.col,true);
+				ocean->set(neighbor.row,neighbor.col,true);
 				q.push(neighbor);
 			}
 			else {
@@ -226,13 +239,24 @@ Model<bool>* find_ocean(Model<short>* DEM, Model<bool> *filter)
 	return ocean;
 }
 
+void apply_filter_to_ocean(Model<bool>* ocean, Model<bool>* filter){
+	for(int row=0; row<ocean->nrows()-1;row++){
+		for (int col=0; col<ocean->ncols(); col++){
+			if (filter->get(row,col)){
+				ocean->set(row,col,false);
+			}
+		}
+	}
+	return;
+}
+
 void add_caspian_sea(Model<bool> *pour_points){
 	Model<bool> *caspian_mask = new Model<bool>(pour_points->nrows(), pour_points->ncols(), MODEL_SET_ZERO);
 	caspian_mask->set_geodata(pour_points->get_geodata());
 
 	string filename = file_storage_location+"input/global_ocean/caspiansea_4326.shp";
 
-	read_shp_filter(filename,caspian_mask);
+	read_shp_filter(filename,caspian_mask, true);
 
 	for (int row=0; row<pour_points->nrows(); row++)
 		for (int col=0; col<pour_points->ncols(); col++){
@@ -468,12 +492,12 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
   FILE *csv_file;
   if (search_config.search_type == SearchType::OCEAN)
     csv_file = fopen(convert_string(file_storage_location +
-                                    "output/reservoirs/ocean_" +
+                                    "output/" + protected_area_folder + "/reservoirs/ocean_" +
                                     str(square_coordinate) + "_reservoirs.csv"),
                      "w");
   else
     csv_file =
-        fopen(convert_string(file_storage_location + "output/reservoirs/" +
+        fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/" +
                              str(square_coordinate) + "_reservoirs.csv"),
               "w");
   if (!csv_file) {
@@ -486,12 +510,12 @@ model_reservoirs(GridSquare square_coordinate, Model<bool> *pour_points,
   if (search_config.search_type == SearchType::OCEAN)
     csv_data_file =
         fopen(convert_string(file_storage_location +
-                             "processing_files/reservoirs/ocean_" +
+                             "processing_files/" + protected_area_folder + "/reservoirs/ocean_" +
                              str(square_coordinate) + "_reservoirs_data.csv"),
               "w");
   else
     csv_data_file = fopen(
-        convert_string(file_storage_location + "processing_files/reservoirs/" +
+        convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
                        str(square_coordinate) + "_reservoirs_data.csv"),
         "w");
   if (!csv_file) {
@@ -659,7 +683,7 @@ void output_empty_mining(){
 
 	// Prepare the reservoir CSV file
 	csv_file =
-			fopen(convert_string(file_storage_location + "output/reservoirs/pit_" +
+			fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/pit_" +
 					str(search_config.grid_square) + "_reservoirs.csv"),
 				"w");
 	if (!csv_file) {
@@ -670,7 +694,7 @@ void output_empty_mining(){
 
 	// Prepare the reservoir data CSV file
 	csv_data_file = fopen(
-			convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
+			convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" +
 				str(search_config.grid_square) + "_reservoirs_data.csv"),
 			"w");
 	if (!csv_data_file) {
@@ -702,7 +726,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 
 	// Prepare the reservoir CSV file
 	csv_file =
-			fopen(convert_string(file_storage_location + "output/reservoirs/pit_" +
+			fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/pit_" +
 					str(search_config.grid_square) + "_reservoirs.csv"),
 				"w");
 	if (!csv_file) {
@@ -713,7 +737,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 
 	// Prepare the reservoir data CSV file
 	csv_data_file = fopen(
-			convert_string(file_storage_location + "processing_files/reservoirs/pit_" +
+			convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/pit_" +
 				str(search_config.grid_square) + "_reservoirs_data.csv"),
 			"w");
 	if (!csv_data_file) {
@@ -738,7 +762,9 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 			i++;
 			
 			if ((pit_lake_mask->get(row,col)) && (!seen_pl->get(row,col))) {
-				model_pit_lakes(pit, pit_lake_mask, depression_mask, seen_pl, seen_d, individual_pit_lake_points, DEM);
+				if (!model_pit_lakes(pit, pit_lake_mask, depression_mask, seen_pl, seen_d, individual_pit_lake_points, DEM))
+					continue;
+
 				individual_pit_points = individual_pit_lake_points;
 
 				if (pit.overlap) {
@@ -747,7 +773,9 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				}
 
 			} else if ((depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
-				model_depression(pit, pit_lake_mask, depression_mask, seen_d, seen_pl, individual_depression_points, DEM);
+				if (!model_depression(pit, pit_lake_mask, depression_mask, seen_d, seen_pl, individual_depression_points, DEM))
+					continue;
+
 				individual_pit_points = individual_depression_points;
 				
 				if (pit.overlap) {					
@@ -759,7 +787,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				continue;
 			}
 			// If the pit is too small, skip modelling
-			if ((max(pit.areas) < min_watershed_area) || (max(pit.volumes) < min_reservoir_volume)){
+			if ((max(pit.areas) < min_watershed_area) || (max(pit.volumes) < min_reservoir_volume)){				
 				continue;
 			}
 
@@ -777,8 +805,9 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 					break;
 				}
 			}
-			if(touching_edge)
+			if(touching_edge){
 				continue;
+			}
 			
 			if(pit.pit_lake_area / max(pit.areas) > 0.5)
 				pit.res_identifier = str(search_config.grid_square) + "_PITL" + str(i);
@@ -786,7 +815,7 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 				pit.res_identifier = str(search_config.grid_square) + "_PITD" + str(i);
 			
 			// Find polygon for the combined depression/pit lake
-			pit.brownfield_polygon = convert_poly(order_polygon(find_edge(individual_pit_points, true)));
+			pit.brownfield_polygon = convert_poly(order_polygon(find_edge(individual_pit_points, true)), 0.5);
 			
 			if(debug_output){
 				for (ArrayCoordinate point : individual_pit_points)
@@ -818,6 +847,153 @@ static int model_brownfield_reservoirs(Model<bool> *pit_lake_mask, Model<bool> *
 	return res_count;
 }
 
+int model_turkey_reservoirs(Model<bool> *turkey_flat_mask, Model<bool> *turkey_depression_mask, Model<short> *DEM){
+	/* 
+	Turkey nests site screening checks for the maximum inscribed circles of flat land
+	AND the minimum enclosing circles of depressions. This maximises water-to-rock ratio.
+
+	Turkey nests on flat land are constrained to a user-defined max_turkey_area since flat
+	regions can be extremely large.
+
+	Turkey nests on flat land are assumed to be circular since ring dams evenly distribute 
+	pressure along the entire dam wall. 
+	*/
+
+	Model<bool> *turkey_mask_debug = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+	turkey_mask_debug->set_geodata(DEM->get_geodata());
+
+	int res_count = 0;
+	int i = 0;
+	Model <bool>* seen_f;
+	Model <bool>* seen_d;
+	FILE *csv_file;
+	FILE *csv_data_file;
+
+	seen_f = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+	seen_f->set_geodata(DEM->get_geodata());
+
+	seen_d = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+	seen_d->set_geodata(DEM->get_geodata());
+
+	// Prepare the reservoir CSV file
+	csv_file =
+			fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/turkey_" +
+					str(search_config.grid_square) + "_reservoirs.csv"),
+				"w");
+	if (!csv_file) {
+		cout << "Failed to open reservoir CSV file" << endl;
+		exit(1);
+	}
+	write_rough_reservoir_csv_header(csv_file);
+
+	// Prepare the reservoir data CSV file
+	csv_data_file = fopen(
+			convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/turkey_" +
+				str(search_config.grid_square) + "_reservoirs_data.csv"),
+			"w");
+	if (!csv_data_file) {
+		fprintf(stderr, "failed to open reservoir CSV data file\n");
+		exit(1);
+	}
+	write_rough_reservoir_data_header(csv_data_file);
+
+	for(int row = 0; row<DEM->nrows();row++) {
+		for(int col = 0; col<DEM->ncols();col++) {	
+			if ((!turkey_flat_mask->get(row,col)) && (!turkey_depression_mask->get(row,col))) {
+				continue;
+			}
+
+			if(seen_f->get(row,col) && seen_d->get(row,col)){
+				continue;
+			}
+
+			// Model turkey nests on flat land
+			if ((turkey_flat_mask->get(row,col)) && (!seen_f->get(row,col))) {
+				// Locate flat region based upon interconnected cells on the mask
+				// Fishnet the flat area if it is large
+				std::vector<std::vector<ArrayCoordinate>> fishnet_regions;
+				std::vector<double> individual_region_areas;
+				double interconnected_flat_area = flat_mask_area_calculator(turkey_flat_mask, seen_f, fishnet_regions, individual_region_areas);
+				
+				if (interconnected_flat_area < min_watershed_area){
+					continue;
+				}
+
+				for(uint i=0; i<fishnet_regions.size();i++) {
+					if (individual_region_areas[i] < min_watershed_area)
+						continue;
+
+					std::vector<ArrayCoordinate> individual_turkey_region = fishnet_regions[i];
+
+					TurkeyCharacteristics turkey(individual_turkey_region[0].row,individual_turkey_region[0].col,DEM->get_origin());
+
+					i++;
+
+					turkey.identifier = str(search_config.grid_square) + "_TURKEYF" + str(i);
+					
+					bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, true);
+
+					if(model_check)
+						res_count++;
+					else{
+						continue;
+					}
+						
+					if(debug_output){
+						for(GeographicCoordinate point : turkey.polygon){
+							ArrayCoordinate ac = convert_coordinates(point,get_origin(search_config.grid_square,border));
+							turkey_mask_debug->set(ac.row,ac.col,true);
+						}
+					}
+				}		
+			}
+
+			// Model turkey nests around natural depressions
+			if ((turkey_depression_mask->get(row,col)) && (!seen_d->get(row,col))) {
+				std::vector<ArrayCoordinate> individual_turkey_region;
+
+				TurkeyCharacteristics turkey(row,col,DEM->get_origin());
+
+				double interconnected_depression_area = depression_mask_area_calculator(row, col, turkey_depression_mask, seen_d, individual_turkey_region);
+				
+				if(interconnected_depression_area < 0.5*min_watershed_area || interconnected_depression_area > max_turkey_area)
+					continue;
+
+				i++;
+				
+				turkey.identifier = str(search_config.grid_square) + "_TURKEYD" + str(i);
+				
+				bool model_check = model_turkey_nest(csv_file, csv_data_file, individual_turkey_region, DEM, turkey, false);
+
+				if(!model_check)
+					continue;
+				else
+				 	res_count++;
+
+				if(debug_output){
+					for(GeographicCoordinate point : turkey.polygon){
+						ArrayCoordinate ac = convert_coordinates(point,get_origin(search_config.grid_square,border));
+						turkey_mask_debug->set(ac.row,ac.col,true);
+					}
+				}
+			}	
+		}
+	}	
+	fclose(csv_file);
+    fclose(csv_data_file);
+
+	if(debug_output){
+		mkdir(convert_string(file_storage_location+"debug/turkey_mask_debug"),0777);
+    	turkey_mask_debug->write(file_storage_location+"debug/turkey_mask_debug/"+str(search_config.grid_square)+"_turkey_mask_debug.tif", GDT_Byte);
+	}
+
+	delete seen_f;
+	delete seen_d;
+	delete turkey_mask_debug;
+
+	return res_count;
+}
+
 int main(int nargs, char **argv) {
   search_config = SearchConfig(nargs, argv);
   cout << "Screening started for " << search_config.filename() << endl;
@@ -831,11 +1007,13 @@ int main(int nargs, char **argv) {
   unsigned long t_usec = start_usec;
 
   mkdir(convert_string(file_storage_location + "output"), 0777);
-  mkdir(convert_string(file_storage_location + "output/reservoirs"), 0777);
+  mkdir(convert_string(file_storage_location + "output/" + protected_area_folder), 0777);
+  mkdir(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs"), 0777);
   mkdir(convert_string(file_storage_location + "processing_files"), 0777);
-  mkdir(convert_string(file_storage_location + "processing_files/reservoirs"), 0777);
+  mkdir(convert_string(file_storage_location + "processing_files/" + protected_area_folder), 0777);
+  mkdir(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs"), 0777);
 
-  if (search_config.search_type.not_existing()) {
+  if (search_config.search_type.not_existing() && search_config.search_type != SearchType::TURKEY) {
 	// Create the DEM and filter model
 	Model<bool> *filter;
 	Model<short> *DEM = read_DEM_with_borders(search_config.grid_square, border);
@@ -919,14 +1097,18 @@ int main(int nargs, char **argv) {
     delete DEM_filled_no_flat;
 
     if(search_config.search_type == SearchType::OCEAN){
-      // Create a mask of all ocean buffers within grid square (used to exclude anomalous reservoirs further than 5km from coast)
+	  // Create a mask of all ocean buffers within grid square (used to exclude anomalous reservoirs further than 5km from coast)
 	  t_usec = walltime_usec();
+
+      // Ocean must be found before applying filter, otherwise filters on the border of the DEM will block the ocean finding
+      pour_points = find_ocean(DEM);
+	  add_caspian_sea(pour_points);
 
 	  Model<bool> *ocean_buffer_mask = new Model<bool>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
 	  ocean_buffer_mask->set_geodata(DEM->get_geodata());
 
-	  std:: string ocean_shp_gs = file_storage_location + "input/global_ocean/ocean_buffer.shp";
-	  read_shp_filter(ocean_shp_gs, ocean_buffer_mask);
+	  std:: string ocean_shp_gs = file_storage_location + "input/global_ocean/global_ocean_protected.shp";
+	  read_shp_filter(ocean_shp_gs, ocean_buffer_mask, true);
 
 	  // Filter out all cells that aren't in the ocean buffer
 	  for(int row = 0; row<DEM->nrows(); row++){
@@ -949,9 +1131,8 @@ int main(int nargs, char **argv) {
 		filter->write(file_storage_location+"debug/filter/"+str(search_config.grid_square)+"_filter.tif", GDT_Byte);
 	  }
 	  delete ocean_buffer_mask;
-	  
-      pour_points = find_ocean(DEM, filter);
-	  add_caspian_sea(pour_points);
+
+	  apply_filter_to_ocean(pour_points, filter);
 
       if (search_config.logger.output_debug()) {
         printf("\nOcean\n");
@@ -991,9 +1172,107 @@ int main(int nargs, char **argv) {
 		search_config.logger.debug("Found " + to_string(count) + " reservoirs. Runtime: " + to_string(1.0e-6*(walltime_usec() - t_usec)) + " sec");
 		printf(convert_string("Screening finished for "+search_config.search_type.prefix()+str(search_config.grid_square)+". Runtime: %.2f sec\n"), 1.0e-6*(walltime_usec() - start_usec) );
    
+   // Turkey nest screening
+   } else if (search_config.search_type == SearchType::TURKEY) {
+		// Create the DEM and filter model
+		Model<bool> *filter;
+		Model<short> *DEM = read_DEM_with_borders(search_config.grid_square, border);
+
+		if (search_config.logger.output_debug()) {
+			printf("\nAfter border added:\n");
+			DEM->print();
+		}
+		if (debug_output) {
+			mkdir(convert_string("debug"), 0777);
+			mkdir(convert_string("debug/input"), 0777);
+			DEM->write("debug/input/" + str(search_config.grid_square) + "_input.tif", GDT_Int16);
+		}
+
+		t_usec = walltime_usec();
+		filter = read_filter(DEM, filter_filenames);
+		if (search_config.logger.output_debug()) {
+			printf("\nFilter:\n");
+			filter->print();
+			printf("Filter Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/filter"),0777);
+			filter->write(file_storage_location+"debug/filter/"+str(search_config.grid_square)+"_filter.tif", GDT_Byte);
+		}
+
+		t_usec = walltime_usec();
+		
+		Model<bool> *turkey_flat_mask;
+		Model<bool> *turkey_depression_mask;
+		int turkey_count = 0;
+
+		// Create a mask of all flat land in DEM (excluding water bodies with 0 degree slope)
+		t_usec = walltime_usec();
+		Model<float> *DEM_float = read_float_DEM_with_borders(search_config.grid_square, border); // Float accuracy required to find water bodies, since require slope of exactly 0
+		turkey_flat_mask = find_flat_land(DEM_float, filter, max_turkey_slope);
+		delete DEM_float;
+
+		if (search_config.logger.output_debug()) {
+			printf("\nTurkey Flat Mask:\n");
+			turkey_flat_mask->print();
+			printf("Turkey flat mask Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/turkey_flat_mask"),0777);
+			turkey_flat_mask->write(file_storage_location+"debug/turkey_flat_mask/"+str(search_config.grid_square)+"_turkey_flat_mask.tif", GDT_Byte);
+		}		
+
+		// Fill all sinks and remove flat regions from DEM
+		t_usec = walltime_usec();
+		Model<double>* DEM_filled_no_flat = fill(DEM);
+		Model<short>* DEM_filled = new Model<short>(DEM->nrows(), DEM->ncols(), MODEL_SET_ZERO);
+		DEM_filled->set_geodata(DEM->get_geodata());
+		for(int row = 0; row<DEM->nrows();row++) {
+			for(int col = 0; col<DEM->ncols();col++) {
+				DEM_filled->set(row, col, convert_to_int(DEM_filled_no_flat->get(row, col)));
+			}
+		}
+
+		if (search_config.logger.output_debug()) {
+			printf("\nFilled No Flats:\n");
+			DEM_filled_no_flat->print();
+			printf("Fill Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/DEM_filled"),0777);
+			DEM_filled->write(file_storage_location+"debug/DEM_filled/"+str(search_config.grid_square)+"_DEM_filled.tif", GDT_Int16);
+			DEM_filled_no_flat->write(file_storage_location+"debug/DEM_filled/"+str(search_config.grid_square)+"_DEM_filled_no_flat.tif",GDT_Float64);
+		}
+
+		delete DEM_filled_no_flat;
+
+		// Create a mask for all depressions > threshold depth
+		t_usec = walltime_usec();
+		turkey_depression_mask = find_depressions(DEM, DEM_filled, filter);
+
+		if (search_config.logger.output_debug()) {
+			printf("\nTurkey Depression Mask:\n");
+			turkey_depression_mask->print();
+			printf("Turkey depression mask Runtime: %.2f sec\n", 1.0e-6*(walltime_usec() - t_usec) );
+		}
+		if(debug_output){
+			mkdir(convert_string(file_storage_location+"debug/turkey_depression_mask"),0777);
+			turkey_depression_mask->write(file_storage_location+"debug/turkey_depression_mask/"+str(search_config.grid_square)+"_turkey_depression_mask.tif", GDT_Byte);
+		}
+		delete filter;
+
+		// Model turkey nests
+		turkey_count = model_turkey_reservoirs(turkey_flat_mask, turkey_depression_mask, DEM);
+
+		search_config.logger.debug("Found " + to_string(turkey_count) + " reservoirs. Runtime: " + to_string(1.0e-6*(walltime_usec() - t_usec)) + " sec");
+		
+		printf(convert_string("Screening finished for " + search_config.filename() +
+                          ". Runtime: %.2f sec\n"),
+           1.0e-6 * (walltime_usec() - start_usec));
+    
     // Brownfield searching based on individual pits or bluefield based on existing reservoirs
     } else if (search_config.search_type.existing() && search_config.search_type != SearchType::BULK_PIT) {
-		FILE *csv_file = fopen(convert_string(file_storage_location + "output/reservoirs/" +
+		FILE *csv_file = fopen(convert_string(file_storage_location + "output/" + protected_area_folder + "/reservoirs/" +
 											search_config.filename() + "_reservoirs.csv"),
 							"w");
 		if (!csv_file) {
@@ -1004,7 +1283,7 @@ int main(int nargs, char **argv) {
 		write_rough_reservoir_csv_header(csv_file);
 
 		FILE *csv_data_file =
-			fopen(convert_string(file_storage_location + "processing_files/reservoirs/" +
+			fopen(convert_string(file_storage_location + "processing_files/" + protected_area_folder + "/reservoirs/" +
 				search_config.filename() +
 								"_reservoirs_data.csv"),
 				"w");
@@ -1109,7 +1388,7 @@ int main(int nargs, char **argv) {
 		mining_tenament_mask->set_geodata(DEM->get_geodata());
 
 		std:: string mining_shp_gs = mining_tenament_shp + str(search_config.grid_square) + ".shp";
-		read_shp_filter(mining_shp_gs, mining_tenament_mask);
+		read_shp_filter(mining_shp_gs, mining_tenament_mask, true);
 
 		// If there are no mining tenaments, end the screening. Filter out all cells that aren't in a mining tenament
 		bool mining_cells = false;

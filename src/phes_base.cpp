@@ -86,10 +86,10 @@ string dtos(double f, int nd) {
 std::string get_dem_filename(GridSquare gs){
 	std::string to_return;
 	if (dem_type == "SRTM") {
-		to_return = file_storage_location+"/input/DEMs/"+str(gs)+"_1arc_v3.tif";
+		to_return = dem_storage_location+"/input/DEMs/"+str(gs)+"_1arc_v3.tif";
 	}
 	else if (dem_type == "FABDEM"){
-		to_return = file_storage_location+"/input/FABDEMs/"+str_fabdem(gs)+"_FABDEM_V1-2.tif";
+		to_return = dem_storage_location+"/input/FABDEMs/"+str_fabdem(gs)+"_FABDEM_V1-2.tif";
 	}
 	else {
 		printf("Invalid dem_type specified.\n");
@@ -208,11 +208,11 @@ BigModel BigModel_init(GridSquare sc){
 }
 
 double calculate_power_house_cost(double power, double head){
-	return powerhouse_coeff*pow(MIN(power,800),(power_exp))/pow(head,head_exp);
+	return powerhouse_coeff*pow(power,(power_exp))/pow(head,head_exp);
 }
 
 double calculate_tunnel_cost(double power, double head, double seperation){
-	return ((power_slope_factor*MIN(power,800)+slope_int)*pow(head,head_coeff)*seperation*1000)+(power_offset*MIN(power,800)+tunnel_fixed);
+	return ((power_slope_factor*power+slope_int)*pow(head,head_coeff)*seperation*1000)+(power_offset*power+tunnel_fixed);
 }
 
 void set_FOM(Pair* pair){
@@ -225,23 +225,37 @@ void set_FOM(Pair* pair){
 	double power_house_cost;
 	if (head > 800) {
 		power_house_cost = 2*calculate_power_house_cost(power/2, head/2);
-		tunnel_cost = 2*calculate_tunnel_cost(power/2, head/2, seperation);
-		power_cost = 0.001*(power_house_cost+tunnel_cost)/MIN(power, 800);
+		tunnel_cost = 2*calculate_tunnel_cost(power/2, head/2, seperation/2);
+		power_cost = 0.001*(power_house_cost+tunnel_cost)/power;
+
+		if(pair->lower.ocean){
+			double total_lining_cost = lining_cost*pair->upper.area*meters_per_hectare;
+			power_house_cost = power_house_cost*sea_power_scaling;
+			double marine_outlet_cost = ref_marine_cost*(power/2)*ref_head/(ref_power*head);
+			power_cost = 0.001*((power_house_cost+tunnel_cost)/power + marine_outlet_cost/power);
+			energy_cost += 0.000001*total_lining_cost/pair->energy_capacity;
+		}
 	}
 	else {
 		power_house_cost = calculate_power_house_cost(power, head);
 		tunnel_cost = calculate_tunnel_cost(power, head, seperation);
-		power_cost = 0.001*(power_house_cost+tunnel_cost)/MIN(power, 800);
+		power_cost = 0.001*(power_house_cost+tunnel_cost)/power;
+
 		if(pair->lower.ocean){
 			double total_lining_cost = lining_cost*pair->upper.area*meters_per_hectare;
 			power_house_cost = power_house_cost*sea_power_scaling;
 			double marine_outlet_cost = ref_marine_cost*power*ref_head/(ref_power*head);
-			power_cost = 0.001*((power_house_cost+tunnel_cost)/MIN(power, 800) + marine_outlet_cost/power);
+			power_cost = 0.001*((power_house_cost+tunnel_cost)/power + marine_outlet_cost/power);
 			energy_cost += 0.000001*total_lining_cost/pair->energy_capacity;
 		}
-	}
+	}	
 
 	pair->FOM = power_cost+energy_cost*pair->storage_time;
+	pair->energy_cost = energy_cost;
+	pair->power_cost = power_cost;
+
+	//std::cout << head << " " << power << " " << power_house_cost << " " << tunnel_cost << " " << power_cost << " " << energy_cost << " " << energy_cost*pair->storage_time << " " << pair->FOM << "\n";
+
 	pair->category = 'Z';
 	uint i = 0;
 	while(i<category_cutoffs.size() && pair->FOM<category_cutoffs[i].power_cost+pair->storage_time*category_cutoffs[i].storage_cost){
@@ -283,6 +297,8 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
     int dbf_field = DBFGetFieldIndex(DBF, string("Vol_total").c_str());
     int dbf_elevation_field = DBFGetFieldIndex(DBF, string("Elevation").c_str());
     int dbf_name_field = DBFGetFieldIndex(DBF, string("Lake_name").c_str());
+	int dbf_poi_lat_field = DBFGetFieldIndex(DBF, string("POI_lat").c_str());
+    int dbf_poi_lon_field = DBFGetFieldIndex(DBF, string("POI_lon").c_str());
     for (i = 0; i<DBFGetRecordCount(DBF); i++){
       const char* s = DBFReadStringAttribute(DBF, i, dbf_name_field);
       if(name==string(s)){
@@ -294,7 +310,11 @@ ExistingReservoir get_existing_reservoir(string name, string filename) {
       throw 1;
     }
     to_return = ExistingReservoir_init(name, 0, 0, DBFReadIntegerAttribute(DBF, i, dbf_elevation_field), DBFReadDoubleAttribute(DBF, i, dbf_field));
-    DBFClose(DBF);
+    
+	double poi_lat = DBFReadDoubleAttribute(DBF, i, dbf_poi_lat_field);
+    double poi_lon = DBFReadDoubleAttribute(DBF, i, dbf_poi_lon_field);
+	to_return.point_of_inaccessibility = {poi_lat, poi_lon};
+	DBFClose(DBF);
   } else {
     vector<ExistingReservoir> reservoirs = read_existing_reservoir_data(convert_string(filename));
 
@@ -567,4 +587,63 @@ RoughBfieldReservoir pit_to_rough_reservoir(BulkPit pit, GeographicCoordinate lo
 	for(GeographicCoordinate c : pit.brownfield_polygon)
     	reservoir.shape_bound.push_back(convert_coordinates(c, origin));
 	return reservoir;
+}
+
+
+std::string get_class(char category){
+	std::string to_return = "Z";
+	
+	if (category >= 'A'){
+		to_return = category;
+	} else if (category == '@') {
+		to_return = "AA";
+	} else if (category == '?'){
+		to_return = "AAA";
+	} else {
+		printf("Unknown cost class.");
+		exit(1);
+	}
+
+	return to_return;
+}
+
+std::string get_class_order(char category){
+	std::string to_return = to_string(1);
+	
+	if (category != 'Z'){
+		to_return = to_string(71-category);
+	} 
+
+	return to_return;
+}
+
+RoughTurkeyReservoir turkey_to_rough_reservoir(TurkeyCharacteristics turkey){
+	RoughReservoir reservoir;
+	GeographicCoordinate centre_gc = convert_coordinates(turkey.centre_point);
+
+	reservoir.identifier = turkey.identifier;
+	reservoir.turkey = true;
+    reservoir.brownfield = false;
+    reservoir.ocean = false;
+	reservoir.pour_point = turkey.centre_point;
+	reservoir.watershed_area = turkey.area;
+	reservoir.latitude = centre_gc.lat;
+	reservoir.longitude = centre_gc.lon;
+	reservoir.elevation = turkey.min_elevation;
+	reservoir.max_dam_height = max_turkey_dam_height;
+	for(uint i = 0; i<dam_wall_heights.size(); i++){
+		reservoir.volumes.push_back(turkey.volumes[i]);
+		reservoir.dam_volumes.push_back(turkey.dam_volumes[i]);
+		reservoir.areas.push_back(turkey.area);
+		reservoir.water_rocks.push_back(turkey.water_rocks[i]);
+		reservoir.fill_depths.push_back(dam_wall_heights[i]);
+    }
+
+	RoughTurkeyReservoir turkey_reservoir(reservoir);
+	GeographicCoordinate origin = get_origin(search_config.grid_square, border);
+	for(GeographicCoordinate c : turkey.polygon)
+    	turkey_reservoir.shape_bound.push_back(convert_coordinates(c, origin));
+
+	return turkey_reservoir;
+
 }

@@ -1,6 +1,7 @@
 #include "polygons.h"
 #include "coordinates.h"
 #include "model2D.h"
+#include "phes_base.h"
 
 // find_polygon_intersections returns an array containing the longitude of all line. Assumes last coordinate is same as first
 vector<double> find_polygon_intersections(int row, vector<GeographicCoordinate> &polygon, Model<bool>* filter){
@@ -16,19 +17,22 @@ vector<double> find_polygon_intersections(int row, vector<GeographicCoordinate> 
     return to_return;
 }
 
-void polygon_to_raster(vector<GeographicCoordinate> &polygon, Model<bool>* raster){
+void polygon_to_raster(vector<GeographicCoordinate> &polygon, Model<bool>* raster, bool set_value){
     for(int row =0; row<raster->nrows(); row++){
         vector<double> polygon_intersections = find_polygon_intersections(row, polygon, raster);
         for(uint j = 0; j<polygon_intersections.size();j++)
             polygon_intersections[j] = (convert_coordinates(GeographicCoordinate_init(0, polygon_intersections[j]),raster->get_origin()).col);
-        for(uint j = 0; j<polygon_intersections.size()/2;j++)
-            for(int col=polygon_intersections[2*j];col<polygon_intersections[2*j+1];col++)
-                if(raster->check_within(row, col))
-                    raster->set(row,col,true);
+        for(uint j = 0; j<polygon_intersections.size()/2;j++){
+            for(int col=polygon_intersections[2*j];col<polygon_intersections[2*j+1];col++){
+                if(!raster->check_within(row, col))
+					continue;
+				raster->set(row,col,set_value);
+			}
+		}
     }
 }
 
-void read_shp_filter(string filename, Model<bool>* filter){
+void read_shp_filter(string filename, Model<bool>* filter, bool set_value){
 	char *shp_filename = new char[filename.length() + 1];
 	strcpy(shp_filename, filename.c_str());
   if(!file_exists(shp_filename)){
@@ -70,7 +74,7 @@ void read_shp_filter(string filename, Model<bool>* filter){
 	    }
 	    search_config.logger.debug(to_string((int)relevant_polygons.size()) + " polygons imported from " + filename);
 	    for(uint i = 0; i<relevant_polygons.size(); i++){
-            polygon_to_raster(relevant_polygons[i], filter);
+            polygon_to_raster(relevant_polygons[i], filter, set_value);
 	    }
     }else{
     	throw(1);
@@ -78,8 +82,14 @@ void read_shp_filter(string filename, Model<bool>* filter){
     SHPClose(SHP);
 }
 
-std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_points, bool add_edge){
+
+std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_points, bool add_border){
 	std::vector<ArrayCoordinate> edge_points;
+
+	if ((polygon_points.size() <= 4) && !add_border) {
+		edge_points = polygon_points;
+		return edge_points;
+	}
 
 	auto model_row_iter = std::max_element(polygon_points.begin(), polygon_points.end(), [](const ArrayCoordinate& p1, const ArrayCoordinate& p2) {
         return p1.row < p2.row;
@@ -93,6 +103,11 @@ std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_poin
 	std::vector<std::vector<bool>> seen_points(model_rows, std::vector<bool>(model_cols, false));
 	
 	for (const auto& point : polygon_points) {
+		if(seen_points[point.row][point.col] == true && !add_border)
+			continue;
+		else if(!add_border)
+			seen_points[point.row][point.col] = true;	
+
 		for (uint d=0; d<directions.size(); d++) {
 			if (directions[d].row * directions[d].col != 0)
 				continue;	
@@ -102,13 +117,13 @@ std::vector<ArrayCoordinate> find_edge(std::vector<ArrayCoordinate> polygon_poin
 			if(neighbor.row<0 || neighbor.col<0 || neighbor.row>=model_rows || neighbor.col>=model_cols)
 				continue;
 			
-			if(seen_points[neighbor.row][neighbor.col] == true)
+			if(seen_points[neighbor.row][neighbor.col] == true && add_border)
 				continue;
-			else
+			else if(add_border)
 				seen_points[neighbor.row][neighbor.col] = true;	
 			
 			if(std::find(polygon_points.begin(), polygon_points.end(), neighbor) == polygon_points.end()){
-				if(add_edge)
+				if(add_border)
 					edge_points.push_back(neighbor);
 				else {
 					edge_points.push_back(point);

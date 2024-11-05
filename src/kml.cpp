@@ -66,6 +66,7 @@ string get_html(Reservoir* reservoir, Pair* pair){
 "              <tr><td>Area (ha)</td><td>"+dtos(reservoir->area,0)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Country</td><td>"+reservoir->country+"</td></tr>"+newline+
 (reservoir->volume < INF*1e-1 ? ("              <tr><td>Volume (GL)</td><td>"+dtos(reservoir->volume,0)+"</td></tr>"+newline) : "") +
+"			   <tr bgcolor=\"#D4E4F3\"><td>Estimated maximum depth (m)</td><td>"+dtos(reservoir->estimated_lake_depth,0)+"</td></tr>"+newline+
 "              </table></td></tr></table></body></html>\n";
 	}else{
 		return
@@ -77,7 +78,7 @@ string get_html(Reservoir* reservoir, Pair* pair){
 "              <tr><td>"+newline+
 "              <table style=\"font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px\">"+newline+
 //"              <tr><td>Reservoir Ref.</td><td>"+reservoir->identifier+"</td></tr>"+newline+
-(pair != NULL ? "              <tr><td>Class</td><td>"+string(1,pair->category)+"</td></tr>"+newline : "")+
+(pair != NULL ? "              <tr><td>Class</td><td>"+get_class(pair->category)+"</td></tr>"+newline : "")+
 "              <tr bgcolor=\"#D4E4F3\"><td>Elevation (m)</td><td>"+to_string(reservoir->elevation)+"</td></tr>"+newline+
 "              <tr><td>Latitude</td><td>"+dtos(reservoir->latitude,4)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Longitude</td><td>"+dtos(reservoir->longitude,4)+"</td></tr>"+newline+
@@ -103,7 +104,7 @@ string get_html(Pair* pair){
 "              <td>"+pair->identifier+"</td></tr>"+newline+
 "              <tr><td>"+newline+
 "              <table style=\"font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px\">"+newline+
-"              <tr><td>Class</td><td>"+string(1,pair->category)+"</td></tr>"+newline+
+"              <tr><td>Class</td><td>"+get_class(pair->category)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Head (m)</td><td>"+to_string(pair->head)+"</td></tr>"+newline+
 "              <tr><td>Separation (km)</td><td>"+dtos(pair->distance,1)+"</td></tr>"+newline+
 "              <tr bgcolor=\"#D4E4F3\"><td>Average Slope (%)</td><td>"+dtos(pair->slope*100,0)+"</td></tr>"+newline+
@@ -118,6 +119,10 @@ string get_html(Pair* pair){
 				(pair->lower.pit ? 
 "			   <tr><td>Lower Pit Depth Fluctuation (m)</td><td>"+dtos(pair->lower.fill_depth,0)+"</td></tr>"+newline+
 "			   <tr bgcolor=\"#D4E4F3\"><td>Lower Pit MOL (m)</td><td>"+dtos(pair->lower.elevation,0)+"</td></tr>"+newline : " ") +
+				(pair->upper.brownfield == 1 ? 
+"			   <tr><td>Upper Lake Depth Fluctuation (m)</td><td>"+dtos(pair->upper.fill_depth,0)+"</td></tr>"+newline : " ") +
+				(pair->lower.brownfield == 1 ? 
+"			   <tr><td>Lower Lake Depth Fluctuation (m)</td><td>"+dtos(pair->lower.fill_depth,0)+"</td></tr>"+newline : " ") +
 "              <tr><td>Country</td><td>"+pair->country+"</td></tr>"+newline+
 "              </table>"+newline+
 "              </body>"+newline+
@@ -133,6 +138,9 @@ string get_attributes(Reservoir* reservoir, Pair* pair){
 "          </Data>\n"
 "          <Data name=\"isUpper\">\n"
 "            <value>"+(&(pair->upper)==reservoir ? "1" : "0")+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Class_Numeric\">\n"
+"            <value>"+to_string(1)+"</value>\n"
 "          </Data>\n"
 // "          <Data name=\"Elevation\">\n"
 // "            <value>"+to_string(reservoir->elevation)+"</value>\n"
@@ -229,32 +237,47 @@ string get_attributes(Pair* pair){
 // "            <value>"+pair->identifier+"</value>\n"
 // "          </Data>\n"
 "          <Data name=\"Class\">\n"
-"            <value>"+string(1,pair->category)+"</value>\n"
+"            <value>"+get_class(pair->category)+"</value>\n"
 "          </Data>\n"
-// "          <Data name=\"Head (m)\">\n"
-// "            <value>"+to_string(pair->head)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Separation (km)\">\n"
-// "            <value>"+dtos(pair->distance,1)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Average Slope (%)\">\n"
-// "            <value>"+dtos(pair->slope*100,0)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Volume (GL)\">\n"
-// "            <value>"+dtos(pair->volume,1)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Water to Rock (Pair)\">\n"
-// "            <value>"+dtos(pair->water_rock,1)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Energy (GWh)\">\n"
-// "            <value>"+energy_capacity_to_string(pair->energy_capacity)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Storage time (h)\">\n"
-// "            <value>"+to_string(pair->storage_time)+"</value>\n"
-// "          </Data>\n"
-// "          <Data name=\"Country\">\n"
-// "            <value>"+pair->country+"</value>\n"
-// "          </Data>\n"
+"          <Data name=\"Class_Numeric\">\n"
+"            <value>"+get_class_order(pair->category)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Head\">\n"
+"            <value>"+to_string(pair->head)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Separation\">\n"
+"            <value>"+dtos(pair->distance,1)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Average_Slope\">\n"
+"            <value>"+dtos(pair->slope*100,0)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Volume\">\n"
+"            <value>"+dtos(pair->volume,1)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Water_Rock_Ratio\">\n"
+"            <value>"+dtos(pair->water_rock,1)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Energy\">\n"
+"            <value>"+energy_capacity_to_string(pair->energy_capacity)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Head_distance_ratio\">\n"
+"            <value>"+dtos(pair->head / (pair->distance*1000), 1)+"</value>\n"
+"          </Data>\n"
+"		   <Data name=\"Dam_volume\">\n"
+"            <value>"+dtos(pair->upper.dam_volume + pair->lower.dam_volume, 1)+"</value>\n"
+"          </Data>\n"
+"		   <Data name=\"Reservoir_area\">\n"
+"            <value>"+dtos(pair->upper.area + pair->lower.area, 1)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Country\">\n"
+"            <value><![CDATA["+pair->country+"]]></value>\n"
+"          </Data>\n"
+"          <Data name=\"Energy_cost\">\n"
+"            <value>"+dtos(pair->energy_cost, 1)+"</value>\n"
+"          </Data>\n"
+"          <Data name=\"Power_cost\">\n"
+"            <value>"+dtos(pair->power_cost, 1)+"</value>\n"
+"          </Data>\n"
 "       </ExtendedData>\n";
 }
 
@@ -372,10 +395,30 @@ string hex(int c){
 }
 
 string get_colour(char category){
-	int opacity = convert_to_int(good_colour[0]+(((category-'A')/4.0)*(bad_colour[0]-good_colour[0])));
-	int blue = convert_to_int(good_colour[1]+(((category-'A')/4.0)*(bad_colour[1]-good_colour[1])));
-	int green = convert_to_int(good_colour[2]+(((category-'A')/4.0)*(bad_colour[2]-good_colour[2])));
-	int red = convert_to_int(good_colour[3]+(((category-'A')/4.0)*(bad_colour[3]-good_colour[3])));
+	int opacity = 0;
+	int blue = 0;
+	int green = 0;
+	int red = 0;
+
+	if (category >= 'A'){
+		opacity = convert_to_int(good_colour[0]+(((category-'A')/4.0)*(bad_colour[0]-good_colour[0])));
+		blue = convert_to_int(good_colour[1]+(((category-'A')/4.0)*(bad_colour[1]-good_colour[1])));
+		green = convert_to_int(good_colour[2]+(((category-'A')/4.0)*(bad_colour[2]-good_colour[2])));
+		red = convert_to_int(good_colour[3]+(((category-'A')/4.0)*(bad_colour[3]-good_colour[3])));
+	} else if (category == '@') {
+		opacity = premium_colour_aa[0];
+		blue = premium_colour_aa[1];
+		green = premium_colour_aa[2];
+		red = premium_colour_aa[3];
+	} else if (category == '?'){
+		opacity = premium_colour_aaa[0];
+		blue = premium_colour_aaa[1];
+		green = premium_colour_aaa[2];
+		red = premium_colour_aaa[3];
+	} else {
+		printf("Unknown cost class.");
+		exit(1);
+	}
 	string to_return = hex(opacity)+hex(blue)+hex(green)+hex(red);
 	return to_return;
 }
@@ -383,8 +426,25 @@ string get_colour(char category){
 string get_scale(char category){
 	for(CategoryCutoff category_cutoff:category_cutoffs)
 		if(category==category_cutoff.category)
-			return dtos(1.25-((category-'A')/8.0),3);
+			return dtos(1.25-((category-'?')/12.0),3);
 	return "0";
+}
+
+std::string get_paddle(char category) {
+	std::string to_return;
+
+	if (category >= 'A'){
+		to_return = get_class(category);
+	} else if (category == '@') {
+		to_return = "red-diamond";
+	} else if (category == '?'){
+		to_return = "red-stars";
+	} else {
+		printf("Unknown cost class.");
+		exit(1);
+	}
+
+	return to_return;
 }
 
 string get_point_kml(Pair* pair, string coordinates){
@@ -396,7 +456,7 @@ string get_point_kml(Pair* pair, string coordinates){
 "          <IconStyle>\n"
 "            <scale>"+get_scale(pair->category)+"</scale>\n"
 "            <color>"+get_colour(pair->category)+"</color>\n"
-"            <Icon><href>http://maps.google.com/mapfiles/kml/paddle/"+pair->category+".png</href></Icon>\n"
+"            <Icon><href>http://maps.google.com/mapfiles/kml/paddle/"+get_paddle(pair->category)+".png</href></Icon>\n"
 "          </IconStyle>\n"
 "        </Style>\n"
 			+get_attributes(pair)
@@ -434,6 +494,11 @@ string output_kml(KML_Holder* kml_holder, string square, Test test){
 }
 
 void update_kml_holder(KML_Holder* kml_holder, Pair* pair, Pair_KML* pair_kml, bool keep_upper, bool keep_lower){
+	if(pair->lower.turkey){
+		//printf("KML1: %s", pair_kml->lower.reservoir.c_str());
+		//printf("KML2: %s", pair_kml->lower.dam[0]);
+	}
+
 	kml_holder->points.push_back(get_point_kml(pair, pair_kml->point));
 	kml_holder->lines.push_back(get_line_kml(pair, pair_kml->line));
 	if (keep_upper) {

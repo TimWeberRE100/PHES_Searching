@@ -6,6 +6,7 @@ existing_reservoirs_shp = US/230306/Bluefield.shp;
 existing_reservoirs_shp_names = US/230306/names.csv;
 use_tiled_bluefield = 1;  // 0 for false, 1 for true
 use_tiled_rivers = 0;  // 0 for false, 1 for true (if true, above shps are ignored)
+use_protected_areas = 0; // 0 to include protected areas in filter, 1 to include non-protected areas in the filter
 
 // GPKG Tiling
 gpkg_path = preprocessing_files/brownfield/global_mining_tenements.gpkg;       // Path to the GPKG file containing global mining tenament polygons
@@ -43,6 +44,14 @@ dam_wall_heights = 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 
 
 depression_depth_min = 10;      // Minimum depth of depressions (m) for mining pit and turkey's nest screenings
 pit_lake_relative_depth = 0.10;  // Pit lakes typically have a relative depth (maximum depth : diameter) of between 10% - 40% (https://www.water.wa.gov.au/__data/assets/pdf_file/0020/4970/96278.pdf). Diameter is based on a circle with the same surface area as the pit lake.
+existing_relative_depth = 0.05; // Relative depth of existing lakes/reservoirs (Bluefield)
+
+max_pit_area = 12000000; // Maximum area (ha) of a pit screening polygon
+depression_depth_min = 2;
+
+max_turkey_area = 200;  // Maximum area (ha) of a turkey nest screening polygon
+max_turkey_slope = 5;   // Maximum slope (degrees) of flat region eligible for turkey's nest screening
+max_turkey_dam_height = 150; // Maximum height (m) of turkey nest dams
 
 // Pairing
 min_head = 100;					// Minimum head (m) to be considered a potential pairS
@@ -88,20 +97,24 @@ dam_wall_height_resolution = 0.5;	// Resolution of dam wall height (m)
 minimum_dam_height = 5.0;
 good_colour = 255, 0, 0, 255; 		// Opacity, Blue, Green, Red
 bad_colour = 255, 200, 200, 255;
+premium_colour_aa = 255, 90, 0, 133
+premium_colour_aaa = 255, 107, 0, 84
 upper_colour = #88F0AA14;
 lower_colour = #88F03C14;
 
 // Reservoir sizings
-//test = 5000, 2000;      // Seasonal storage connected to rivers only
-test = 1500, 504;				// Test in format {Volume (GL), Storage time (h)}
-test = 500, 168;
+test = 5000, 200;      
+test = 1500, 60;				// Test in format {Volume (GL), Storage time (h)}
+test = 500, 50;
 test = 150, 50;
-test = 50, 50;
+test = 50, 18;
 test = 15, 18;
 test = 5, 18;
-test = 2, 6;
+test = 2, 6; 
 
 // Class Cutoffs
+? = 176, 16;                        // Premium class AAA
+@ = 357, 32;                        // Premium class AA
 A = 533, 47;						// Class cutoffs in the format {Power Cost, Storage Cost}
 B = 666, 59;
 C = 800, 70;

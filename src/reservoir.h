@@ -1,6 +1,7 @@
 #ifndef RESERVOIR_H
 #define RESERVOIR_H
 
+#include "model2D.h"
 #include "phes_base.h"
 #include <array>
 
@@ -69,6 +70,13 @@ public:
   explicit RoughBfieldReservoir(const RoughReservoir &r) : RoughReservoir(r) {}
 };
 
+class RoughTurkeyReservoir : public RoughReservoir {
+public:
+  vector<ArrayCoordinate> shape_bound;
+  RoughTurkeyReservoir() {};
+  RoughTurkeyReservoir(RoughReservoir r) : RoughReservoir(r) {}
+};
+
 struct ExistingReservoir {
   string identifier;
   double latitude;
@@ -78,6 +86,7 @@ struct ExistingReservoir {
   double area;
   bool river = false;
   vector<GeographicCoordinate> polygon;
+  GeographicCoordinate point_of_inaccessibility;
 };
 
 struct AltitudeVolumePair {
@@ -117,6 +126,10 @@ class Reservoir {
     string country;
     vector<ArrayCoordinate> shape_bound;
     vector<ArrayCoordinate> reservoir_polygon;
+    GeographicCoordinate point_of_inaccessibility_gc;
+    Circle pole_of_inaccess = {{0,0,{0,0}},0};
+    double estimated_lake_depth;
+    double lake_surface_radius;
     bool operator<(const Reservoir &o) const { return elevation > o.elevation; }
 };
 
@@ -131,6 +144,8 @@ struct Pair {
   double required_volume;
   double volume;
   double FOM;
+  double energy_cost;
+  double power_cost;
   char category;
   double water_rock;
   double fill_depth;
